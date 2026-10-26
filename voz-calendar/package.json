@@ -1,0 +1,33 @@
+{
+  "name": "voz-calendar",
+  "version": "0.1.0",
+  "description": "Say \"calendar\" to add time blocks to Apple Calendar or move events, by voice",
+  "type": "module",
+  "keywords": [
+    "voz-package",
+    "calendar",
+    "time-blocking"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Joelheile/voz-extensions.git",
+    "directory": "voz-calendar"
+  },
+  "files": [
+    "index.ts",
+    "calendar.ts",
+    "eventkit.js",
+    "README.md"
+  ],
+  "voz": {
+    "apiVersion": 2
+  },
+  "dependencies": {
+    "chrono-node": "2.10.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "voz-mcp",
+  "version": "0.1.0",
+  "description": "Ask any MCP server by voice, and give AI tools read access to your Voz history",
+  "type": "module",
+  "keywords": [
+    "voz-package",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Joelheile/voz-extensions.git",
+    "directory": "voz-mcp"
+  },
+  "files": [
+    "index.ts",
+    "mcp.ts",
+    "history.ts",
+    "README.md"
+  ],
+  "voz": {
+    "apiVersion": 2
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}
