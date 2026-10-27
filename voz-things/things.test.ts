@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test";
-import { inbox, resolveList, thingsURL, toTodo } from "./things";
+import { inbox, sourceScript, thingsURL, toTodo, withSource } from "./things";
 
 const monday = new Date(2026, 9, 26, 10, 0);
-const tags = ["Errands", "Prio 1"];
+const things = { lists: [], tags: ["Errands", "Prio 1"] };
 const todo = (title: string, dictation: string, extra = {}) =>
-  toTodo({ title, list: inbox, ...extra }, dictation, monday, tags);
+  toTodo({ title, list: inbox, ...extra }, dictation, monday, things);
 
 test("reads start dates, times and Things keywords from the dictation", () => {
   expect(todo("Call Milan", "call Milan tomorrow").when).toBe("2026-10-27");
@@ -72,15 +72,15 @@ test("keeps the model's list only when the dictation names it", () => {
       { title: "Pack", list: "SF trip (packing)" },
       "pack chargers for the SF trip",
       monday,
-      [],
-    ).list,
-  ).toBe("SF trip (packing)");
+      { lists: [{ id: "project-1", name: "SF trip (packing)" }], tags: [] },
+    ),
+  ).toEqual({ title: "Pack", list: "SF trip (packing)", listID: "project-1" });
   expect(
     toTodo(
       { title: "Ask Lisa", list: "Founding startup" },
       "ask Lisa for the invoice",
       monday,
-      [],
+      things,
     ).list,
   ).toBe(inbox);
 });
@@ -91,6 +91,7 @@ test("builds an add URL and leaves out the inbox and empty fields", () => {
       {
         title: "Call Milan",
         list: "Thesis",
+        listID: "project-1",
         when: "2026-10-27",
         deadline: "2026-10-30",
         tags: ["Uni", "Prio 1"],
@@ -100,30 +101,52 @@ test("builds an add URL and leaves out the inbox and empty fields", () => {
       false,
     ),
   ).toBe(
-    "things:///add?title=Call%20Milan&list=Thesis&when=2026-10-27&deadline=2026-10-30&tags=Uni%2CPrio%201&checklist-items=Slides%0AGrading&notes=Mornings",
+    "things:///add?title=Call%20Milan&list-id=project-1&when=2026-10-27&deadline=2026-10-30&tags=Uni%2CPrio%201&checklist-items=Slides%0AGrading&notes=Mornings",
   );
   expect(thingsURL({ title: "Buy milk", list: inbox }, true)).toBe(
     "things:///add?title=Buy%20milk&show-quick-entry=true",
   );
 });
 
-test("uses a stable Things ID and rejects ambiguous or missing destinations", () => {
-  const destination = { title: "Send draft", list: "Launch" };
-  const resolved = resolveList(destination, [
+test("rejects a list name that several Things lists share", () => {
+  const lists = [
     { id: "project-1", name: "Launch" },
-  ]);
-  expect(thingsURL(resolved, false)).toBe(
-    "things:///add?title=Send%20draft&list-id=project-1",
-  );
+    { id: "area-2", name: "Launch" },
+  ];
   expect(() =>
-    resolveList(destination, [
-      { id: "project-1", name: "Launch" },
-      { id: "area-2", name: "Launch" },
-    ]),
+    toTodo(
+      { title: "Send draft", list: "Launch" },
+      "send the launch draft",
+      monday,
+      { lists, tags: [] },
+    ),
   ).toThrow("Several Things lists");
-  expect(() => resolveList(destination, [])).toThrow("not found");
-  expect(resolveList({ title: "Buy milk", list: inbox }, [])).toEqual({
-    title: "Buy milk",
-    list: inbox,
-  });
+});
+
+test("links the mail or page the to-do came from in the notes", () => {
+  const mail = { title: "Invoice March", url: "message://%3Cabc@mail.com%3E" };
+  expect(withSource({ title: "Reply", list: inbox }, mail).notes).toBe(
+    "Invoice March\nmessage://%3Cabc@mail.com%3E",
+  );
+  expect(
+    withSource(
+      { title: "Read", list: inbox, notes: "For the thesis" },
+      { title: "Paper", url: "https://arxiv.org/abs/1" },
+    ).notes,
+  ).toBe("For the thesis\n\nPaper\nhttps://arxiv.org/abs/1");
+});
+
+test("ignores links that are not web pages or mails", () => {
+  for (const url of ["file:///etc/passwd", "javascript:alert(1)", ""])
+    expect(
+      withSource({ title: "Read", list: inbox }, { title: "x", url }).notes,
+    ).toBeUndefined();
+});
+
+test("reads the source only from mail and browsers", () => {
+  expect(sourceScript("com.apple.mail")).toContain("messageId");
+  expect(sourceScript("com.apple.Safari")).toContain("currentTab");
+  expect(sourceScript("com.google.Chrome")).toContain("activeTab");
+  expect(sourceScript("com.apple.Notes")).toBeUndefined();
+  expect(sourceScript(undefined)).toBeUndefined();
 });

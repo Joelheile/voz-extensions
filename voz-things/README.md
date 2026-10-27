@@ -30,6 +30,12 @@ You need Things 3 and a Mac with Apple Intelligence. The first time it runs, mac
 
 Pause, or say a comma, before "checklist", "notes" and "tags". Voz then copies those parts word for word. Without them, the model still finds steps and notes in what you say.
 
+## Links back to where you were
+
+Say "todo reply to this" while you read a mail, and the to-do's notes link to that mail. In a browser, they link to the page. This works in Mail, Safari, Chrome, Arc, Dia, Brave, Edge and Vivaldi.
+
+The first time, macOS asks whether Voz may control that app. If you don't allow it, or nothing is selected, the to-do is added without a link.
+
 ## How it works
 
 1. Voz's on-device model writes the title and picks the project or area. It also finds steps and notes when you don't name those parts. The list comes from Things, so the model can only pick one you have.

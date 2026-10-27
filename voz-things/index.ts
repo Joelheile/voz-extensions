@@ -1,10 +1,12 @@
 import { defineExtension } from "voz";
 import {
   instructions,
-  resolveList,
   schema,
+  sourceScript,
   thingsURL,
   toTodo,
+  withSource,
+  type Source,
   type ThingsList,
 } from "./things";
 
@@ -37,23 +39,28 @@ export default defineExtension((voz) => {
       async (event, ctx) => {
         if (!event.text)
           return ctx.notify("Say the to-do after the trigger word");
-        const { lists, tags } = await thingsLists();
+        const [things, source] = await Promise.all([
+          thingsLists(),
+          frontSource(ctx.app.bundleID).catch(() => unreadable),
+        ]);
         const fields = await ctx.generate({
           instructions,
           prompt: `Dictation: ${event.text}`,
-          schema: schema([...new Set(lists.map((list) => list.name))]),
+          schema: schema(things.lists),
         });
-        const todo = resolveList(
-          toTodo(fields, event.text, new Date(), tags),
-          lists,
+        const todo = withSource(
+          toTodo(fields, event.text, new Date(), things),
+          source === unreadable ? undefined : source,
         );
-        if (!todo.title.trim())
-          throw new Error("The to-do title is empty. Say what you want to do.");
+        if (!todo.title) return ctx.notify("Say what you want to do");
         await open(thingsURL(todo, settings.quickEntry));
+        const sent = settings.quickEntry
+          ? `Opened "${todo.title}" for review in Things`
+          : `Sent "${todo.title}" to Things`;
         ctx.notify(
-          settings.quickEntry
-            ? `Opened "${todo.title}" for review in Things`
-            : `Sent "${todo.title}" to Things`,
+          source === unreadable
+            ? `${sent} without a link. Allow Voz to control ${ctx.app.name ?? "that app"} in System Settings > Privacy & Security > Automation`
+            : sent,
         );
       },
       { at: "start" },
@@ -61,21 +68,34 @@ export default defineExtension((voz) => {
   }
 });
 
+const unreadable: "unreadable" = "unreadable";
+
 async function thingsLists(): Promise<{ lists: ThingsList[]; tags: string[] }> {
-  const process = Bun.spawn(
-    ["osascript", "-l", "JavaScript", "-e", listsScript],
-    { stderr: "pipe" },
-  );
+  try {
+    return await jxa(listsScript);
+  } catch (error) {
+    throw new Error(
+      `Could not read Things projects: ${(error as Error).message}. Check that Things is installed and allow Voz to control it in System Settings > Privacy & Security > Automation.`,
+    );
+  }
+}
+
+async function frontSource(bundleID?: string): Promise<Source | undefined> {
+  const script = sourceScript(bundleID);
+  return script ? jxa(script, 2000).catch(() => undefined) : undefined;
+}
+
+async function jxa(script: string, timeout?: number) {
+  const process = Bun.spawn(["osascript", "-l", "JavaScript", "-e", script], {
+    stderr: "pipe",
+    timeout,
+  });
   const [output, error, code] = await Promise.all([
     new Response(process.stdout).text(),
     new Response(process.stderr).text(),
     process.exited,
   ]);
-  if (code !== 0) {
-    throw new Error(
-      `Could not read Things projects (exit ${code}): ${error.trim()}. Check that Things is installed and allow Voz to control it in System Settings > Privacy & Security > Automation.`,
-    );
-  }
+  if (code !== 0) throw new Error(`exit ${code}: ${error.trim()}`);
   return JSON.parse(output);
 }
 
