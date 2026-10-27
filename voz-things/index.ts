@@ -1,8 +1,17 @@
 import { defineExtension } from "voz";
-import { inbox, instructions, schema, thingsURL, toTodo } from "./things";
+import {
+  instructions,
+  schema,
+  sourceScript,
+  thingsURL,
+  toTodo,
+  withSource,
+  type Source,
+  type ThingsList,
+} from "./things";
 
 const listsScript = `const things = Application("Things3");
-JSON.stringify({ lists: [...things.projects.name(), ...things.areas.name()], tags: things.tags.name() })`;
+JSON.stringify({ lists: [...things.projects().filter(project => project.status() === "open"), ...things.areas()].map(list => ({ id: list.id(), name: list.name() })), tags: things.tags.name() })`;
 
 export default defineExtension((voz) => {
   const settings = voz.settings({
@@ -30,18 +39,28 @@ export default defineExtension((voz) => {
       async (event, ctx) => {
         if (!event.text)
           return ctx.notify("Say the to-do after the trigger word");
-        const { lists, tags } = await thingsLists();
+        const [things, source] = await Promise.all([
+          thingsLists(),
+          frontSource(ctx.app.bundleID).catch(() => unreadable),
+        ]);
         const fields = await ctx.generate({
           instructions,
           prompt: `Dictation: ${event.text}`,
-          schema: schema(lists),
+          schema: schema(things.lists),
         });
-        const todo = toTodo(fields, event.text, new Date(), tags);
+        const todo = withSource(
+          toTodo(fields, event.text, new Date(), things),
+          source === unreadable ? undefined : source,
+        );
+        if (!todo.title) return ctx.notify("Say what you want to do");
         await open(thingsURL(todo, settings.quickEntry));
+        const sent = settings.quickEntry
+          ? `Opened "${todo.title}" for review in Things`
+          : `Sent "${todo.title}" to Things`;
         ctx.notify(
-          todo.list === inbox
-            ? `Added "${todo.title}"`
-            : `Added "${todo.title}" to ${todo.list}`,
+          source === unreadable
+            ? `${sent} without a link. Allow Voz to control ${ctx.app.name ?? "that app"} in System Settings > Privacy & Security > Automation`
+            : sent,
         );
       },
       { at: "start" },
@@ -49,20 +68,34 @@ export default defineExtension((voz) => {
   }
 });
 
-async function thingsLists(): Promise<{ lists: string[]; tags: string[] }> {
-  const process = Bun.spawn(
-    ["osascript", "-l", "JavaScript", "-e", listsScript],
-    { stderr: "pipe" },
-  );
+const unreadable: "unreadable" = "unreadable";
+
+async function thingsLists(): Promise<{ lists: ThingsList[]; tags: string[] }> {
+  try {
+    return await jxa(listsScript);
+  } catch (error) {
+    throw new Error(
+      `Could not read Things projects: ${(error as Error).message}. Check that Things is installed and allow Voz to control it in System Settings > Privacy & Security > Automation.`,
+    );
+  }
+}
+
+async function frontSource(bundleID?: string): Promise<Source | undefined> {
+  const script = sourceScript(bundleID);
+  return script ? jxa(script, 2000).catch(() => undefined) : undefined;
+}
+
+async function jxa(script: string, timeout?: number) {
+  const process = Bun.spawn(["osascript", "-l", "JavaScript", "-e", script], {
+    stderr: "pipe",
+    timeout,
+  });
   const [output, error, code] = await Promise.all([
     new Response(process.stdout).text(),
     new Response(process.stderr).text(),
     process.exited,
   ]);
-  if (code !== 0) {
-    console.log(`Could not read Things projects: ${error.trim()}`);
-    return { lists: [], tags: [] };
-  }
+  if (code !== 0) throw new Error(`exit ${code}: ${error.trim()}`);
   return JSON.parse(output);
 }
 

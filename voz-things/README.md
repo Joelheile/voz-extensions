@@ -30,11 +30,21 @@ You need Things 3 and a Mac with Apple Intelligence. The first time it runs, mac
 
 Pause, or say a comma, before "checklist", "notes" and "tags". Voz then copies those parts word for word. Without them, the model still finds steps and notes in what you say.
 
+## Links back to where you were
+
+Say "todo reply to this" while you read a mail, and the to-do's notes link to that mail. In a browser, they link to the page. This works in Mail, Safari, Chrome, Arc, Dia, Brave, Edge and Vivaldi.
+
+The first time, macOS asks whether Voz may control that app. If you don't allow it, or nothing is selected, the to-do is added without a link.
+
 ## How it works
 
 1. Voz's on-device model writes the title and picks the project or area. It also finds steps and notes when you don't name those parts. The list comes from Things, so the model can only pick one you have.
 2. Code does the rest. [chrono](https://github.com/wanasit/chrono) finds the dates in English or German, and a date after "due", "by" or "bis" becomes the deadline. Code also takes dates out of the title and keeps a project only if you said a word from its name.
 3. The extension opens a [Things URL](https://culturedcode.com/things/help/url-scheme/) in the background. Things adds the to-do without asking for an auth token.
+
+Destinations use Things IDs. If multiple projects or areas have the selected name, the extension stops and asks you to give them distinct names. A failure to read projects stops the command instead of silently using Inbox.
+
+"Sent to Things" confirms URL dispatch, not that Things saved the to-do. With Quick Entry enabled, "Opened for review" means you still need to save it.
 
 Nothing leaves your Mac.
 

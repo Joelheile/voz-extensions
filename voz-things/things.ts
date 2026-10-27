@@ -8,12 +8,26 @@ export type Fields = {
 };
 
 export type Todo = Fields & {
+  listID?: string;
   when?: string;
   deadline?: string;
   tags?: string[];
 };
 
 export const inbox = "Inbox";
+
+export type ThingsList = { id: string; name: string };
+
+export type Source = { title: string; url: string };
+
+const chromiumBrowsers = new Set([
+  "com.google.Chrome",
+  "company.thebrowser.Browser",
+  "company.thebrowser.dia",
+  "com.brave.Browser",
+  "com.microsoft.edgemac",
+  "com.vivaldi.Vivaldi",
+]);
 
 const thingsWhen = new Map([
   ["tonight", "evening"],
@@ -44,12 +58,15 @@ Example: "prepare the pitch deck for the startup by Friday, I need a market slid
 Example: "rechnung an Lisa schicken, sie braucht die Steuernummer"
 {"title": "Rechnung an Lisa schicken", "list": "${inbox}", "notes": "Sie braucht die Steuernummer"}`;
 
-export function schema(lists: string[]) {
+export function schema(lists: ThingsList[]) {
   return {
     type: "object",
     properties: {
       title: { type: "string", description: "Short imperative title" },
-      list: { type: "string", enum: [inbox, ...lists] },
+      list: {
+        type: "string",
+        enum: [inbox, ...new Set(lists.map((list) => list.name))],
+      },
       checklist: { type: "array", items: { type: "string" } },
       notes: { type: "string" },
     },
@@ -61,7 +78,7 @@ export function toTodo(
   fields: Fields,
   dictation: string,
   now: Date,
-  tags: string[],
+  things: { lists: ThingsList[]; tags: string[] },
 ): Todo {
   const spoken = sections(dictation);
   const dates = spokenDates(spoken.main, now);
@@ -80,6 +97,7 @@ export function toTodo(
   const todo: Todo = {
     title: title.replace(/[\s,;:]+$/, ""),
     list: says(dictation, fields.list) ? fields.list : inbox,
+    listID: listID(fields.list, dictation, things.lists),
     checklist: spokeSections
       ? spoken.checklist
       : fields.checklist?.filter((item) => item !== fields.title),
@@ -87,7 +105,7 @@ export function toTodo(
     when: dates.when,
     deadline: dates.deadline,
     tags: spoken.tags?.flatMap((said) =>
-      tags.filter((tag) => tag.toLowerCase() === said.toLowerCase()),
+      things.tags.filter((tag) => tag.toLowerCase() === said.toLowerCase()),
     ),
   };
   return Object.fromEntries(
@@ -95,10 +113,39 @@ export function toTodo(
   ) as Todo;
 }
 
+function listID(name: string, dictation: string, lists: ThingsList[]) {
+  if (name === inbox || !says(dictation, name)) return undefined;
+  const matches = lists.filter((list) => list.name === name);
+  if (matches.length > 1)
+    throw new Error(
+      `Several Things lists are named "${name}". Rename one to dictate to it.`,
+    );
+  return matches[0]?.id;
+}
+
+export function sourceScript(bundleID?: string) {
+  if (bundleID === "com.apple.mail")
+    return `const message = Application("com.apple.mail").selection()[0];
+JSON.stringify(message ? { title: message.subject(), url: "message://" + encodeURIComponent("<" + message.messageId() + ">") } : null)`;
+  if (bundleID === "com.apple.Safari")
+    return `const tab = Application("com.apple.Safari").windows[0].currentTab();
+JSON.stringify({ title: tab.name(), url: tab.url() })`;
+  if (bundleID && chromiumBrowsers.has(bundleID))
+    return `const tab = Application("${bundleID}").windows[0].activeTab();
+JSON.stringify({ title: tab.title(), url: tab.url() })`;
+  return undefined;
+}
+
+export function withSource(todo: Todo, source?: Source | null): Todo {
+  if (!source || !/^(https?|message):\/\//.test(source.url)) return todo;
+  const link = [source.title.trim(), source.url].filter(Boolean).join("\n");
+  return { ...todo, notes: [todo.notes, link].filter(Boolean).join("\n\n") };
+}
+
 export function thingsURL(todo: Todo, quickEntry: boolean) {
   const params: [string, string | undefined][] = [
     ["title", todo.title],
-    ["list", todo.list === inbox ? undefined : todo.list],
+    ["list-id", todo.listID],
     ["when", todo.when],
     ["deadline", todo.deadline],
     ["tags", todo.tags?.join(",")],

@@ -10,6 +10,7 @@ import {
   resultText,
   saidArguments,
   toSchema,
+  validateArguments,
   type Content,
   type JsonSchema,
 } from "./mcp";
@@ -39,6 +40,24 @@ const call = async (args: Record<string, string | number>) =>
     (await client.callTool({ name: "search_dictations", arguments: args }))
       .content as Content[],
   );
+
+test("validates generated arguments against the server's original constraints", () => {
+  const tool = {
+    server: "test",
+    name: "search",
+    inputSchema: {
+      type: "object",
+      properties: { limit: { type: "integer", minimum: 1, maximum: 10 } },
+      required: ["limit"],
+      additionalProperties: false,
+    },
+  };
+  expect(() => validateArguments(tool, { limit: 5 })).not.toThrow();
+  expect(() => validateArguments(tool, { limit: 100 })).toThrow(
+    "Invalid arguments for test/search",
+  );
+  expect(() => validateArguments(tool, {})).toThrow("Invalid arguments");
+});
 
 test("history server searches dictations newest first, by words and app", async () => {
   expect(await call({ query: "INVOICE" })).toMatch(

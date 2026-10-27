@@ -19,6 +19,7 @@ import {
   saidArguments,
   toolID,
   toSchema,
+  validateArguments,
   type Content,
   type JsonSchema,
   type Tool,
@@ -79,10 +80,9 @@ export default defineExtension((voz) => {
       });
       const tool = tools.find((candidate) => toolID(candidate) === picked);
       if (!tool) return ctx.notify("No tool fits that request");
-      const schema = toSchema(tool.inputSchema) ?? {
-        type: "object",
-        properties: {},
-      };
+      const schema = toSchema(tool.inputSchema);
+      if (!schema || schema.type !== "object")
+        throw new Error(`Unsupported input schema for ${toolID(tool)}`);
       const generated = await ctx.generate({
         instructions: argumentsInstructions,
         prompt: argumentsPrompt(event.text, tool, new Date()),
@@ -93,6 +93,7 @@ export default defineExtension((voz) => {
         schema,
         event.text,
       );
+      validateArguments(tool, args);
       const connection = ready.find((candidate) =>
         candidate.tools.includes(tool),
       )!;
@@ -160,12 +161,14 @@ async function connect(
   do {
     const page = await client.listTools(cursor ? { cursor } : undefined);
     tools.push(
-      ...page.tools.map((tool) => ({
-        server: name,
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema as JsonSchema,
-      })),
+      ...page.tools
+        .filter((tool) => tool.annotations?.destructiveHint !== true)
+        .map((tool) => ({
+          server: name,
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema as JsonSchema,
+        })),
     );
     cursor = page.nextCursor;
   } while (cursor);
