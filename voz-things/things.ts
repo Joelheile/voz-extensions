@@ -8,12 +8,27 @@ export type Fields = {
 };
 
 export type Todo = Fields & {
+  listID?: string;
   when?: string;
   deadline?: string;
   tags?: string[];
 };
 
 export const inbox = "Inbox";
+
+export type ThingsList = { id: string; name: string };
+
+export function resolveList(todo: Todo, lists: ThingsList[]): Todo {
+  if (todo.list === inbox) return todo;
+  const matches = lists.filter((list) => list.name === todo.list);
+  if (matches.length > 1)
+    throw new Error(
+      `Several Things lists are named "${todo.list}". Give them distinct names before dictating to this destination.`,
+    );
+  const match = matches[0];
+  if (!match) throw new Error(`Things list "${todo.list}" was not found`);
+  return { ...todo, listID: match.id };
+}
 
 const thingsWhen = new Map([
   ["tonight", "evening"],
@@ -98,7 +113,10 @@ export function toTodo(
 export function thingsURL(todo: Todo, quickEntry: boolean) {
   const params: [string, string | undefined][] = [
     ["title", todo.title],
-    ["list", todo.list === inbox ? undefined : todo.list],
+    [
+      todo.listID ? "list-id" : "list",
+      todo.listID ?? (todo.list === inbox ? undefined : todo.list),
+    ],
     ["when", todo.when],
     ["deadline", todo.deadline],
     ["tags", todo.tags?.join(",")],

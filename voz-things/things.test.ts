@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { inbox, thingsURL, toTodo } from "./things";
+import { inbox, resolveList, thingsURL, toTodo } from "./things";
 
 const monday = new Date(2026, 9, 26, 10, 0);
 const tags = ["Errands", "Prio 1"];
@@ -105,4 +105,25 @@ test("builds an add URL and leaves out the inbox and empty fields", () => {
   expect(thingsURL({ title: "Buy milk", list: inbox }, true)).toBe(
     "things:///add?title=Buy%20milk&show-quick-entry=true",
   );
+});
+
+test("uses a stable Things ID and rejects ambiguous or missing destinations", () => {
+  const destination = { title: "Send draft", list: "Launch" };
+  const resolved = resolveList(destination, [
+    { id: "project-1", name: "Launch" },
+  ]);
+  expect(thingsURL(resolved, false)).toBe(
+    "things:///add?title=Send%20draft&list-id=project-1",
+  );
+  expect(() =>
+    resolveList(destination, [
+      { id: "project-1", name: "Launch" },
+      { id: "area-2", name: "Launch" },
+    ]),
+  ).toThrow("Several Things lists");
+  expect(() => resolveList(destination, [])).toThrow("not found");
+  expect(resolveList({ title: "Buy milk", list: inbox }, [])).toEqual({
+    title: "Buy milk",
+    list: inbox,
+  });
 });

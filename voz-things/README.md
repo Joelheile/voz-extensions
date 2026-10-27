@@ -36,6 +36,10 @@ Pause, or say a comma, before "checklist", "notes" and "tags". Voz then copies t
 2. Code does the rest. [chrono](https://github.com/wanasit/chrono) finds the dates in English or German, and a date after "due", "by" or "bis" becomes the deadline. Code also takes dates out of the title and keeps a project only if you said a word from its name.
 3. The extension opens a [Things URL](https://culturedcode.com/things/help/url-scheme/) in the background. Things adds the to-do without asking for an auth token.
 
+Destinations use Things IDs. If multiple projects or areas have the selected name, the extension stops and asks you to give them distinct names. A failure to read projects stops the command instead of silently using Inbox.
+
+"Sent to Things" confirms URL dispatch, not that Things saved the to-do. With Quick Entry enabled, "Opened for review" means you still need to save it.
+
 Nothing leaves your Mac.
 
 ## Settings

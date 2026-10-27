@@ -1,8 +1,15 @@
 import { defineExtension } from "voz";
-import { inbox, instructions, schema, thingsURL, toTodo } from "./things";
+import {
+  instructions,
+  resolveList,
+  schema,
+  thingsURL,
+  toTodo,
+  type ThingsList,
+} from "./things";
 
 const listsScript = `const things = Application("Things3");
-JSON.stringify({ lists: [...things.projects.name(), ...things.areas.name()], tags: things.tags.name() })`;
+JSON.stringify({ lists: [...things.projects().filter(project => project.status() === "open"), ...things.areas()].map(list => ({ id: list.id(), name: list.name() })), tags: things.tags.name() })`;
 
 export default defineExtension((voz) => {
   const settings = voz.settings({
@@ -34,14 +41,19 @@ export default defineExtension((voz) => {
         const fields = await ctx.generate({
           instructions,
           prompt: `Dictation: ${event.text}`,
-          schema: schema(lists),
+          schema: schema([...new Set(lists.map((list) => list.name))]),
         });
-        const todo = toTodo(fields, event.text, new Date(), tags);
+        const todo = resolveList(
+          toTodo(fields, event.text, new Date(), tags),
+          lists,
+        );
+        if (!todo.title.trim())
+          throw new Error("The to-do title is empty. Say what you want to do.");
         await open(thingsURL(todo, settings.quickEntry));
         ctx.notify(
-          todo.list === inbox
-            ? `Added "${todo.title}"`
-            : `Added "${todo.title}" to ${todo.list}`,
+          settings.quickEntry
+            ? `Opened "${todo.title}" for review in Things`
+            : `Sent "${todo.title}" to Things`,
         );
       },
       { at: "start" },
@@ -49,7 +61,7 @@ export default defineExtension((voz) => {
   }
 });
 
-async function thingsLists(): Promise<{ lists: string[]; tags: string[] }> {
+async function thingsLists(): Promise<{ lists: ThingsList[]; tags: string[] }> {
   const process = Bun.spawn(
     ["osascript", "-l", "JavaScript", "-e", listsScript],
     { stderr: "pipe" },
@@ -60,8 +72,9 @@ async function thingsLists(): Promise<{ lists: string[]; tags: string[] }> {
     process.exited,
   ]);
   if (code !== 0) {
-    console.log(`Could not read Things projects: ${error.trim()}`);
-    return { lists: [], tags: [] };
+    throw new Error(
+      `Could not read Things projects (exit ${code}): ${error.trim()}. Check that Things is installed and allow Voz to control it in System Settings > Privacy & Security > Automation.`,
+    );
   }
   return JSON.parse(output);
 }
