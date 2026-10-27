@@ -43,6 +43,8 @@ Voz starts each server when the extension loads. For each request, the on-device
 
 The client only supports servers that run as a local command (stdio). It sends the model up to 40 tools. Keep the list short, because the model picks better from fewer tools.
 
+Each request calls one tool. It does not run a conversation or a sequence of dependent tools. Generated arguments are checked against the server's original JSON Schema before execution, including constraints omitted from the model's schema. Invalid arguments stop the command.
+
 ## Search your history from AI apps
 
 In Voz, open Extensions, then run "Copy history server config". Paste the result into your AI app's MCP config, such as:
@@ -70,7 +72,7 @@ The server has one tool, `search_dictations`. It searches by words, app and date
 
 ## Write your own MCP server
 
-Any MCP server works with Voz and with every other MCP client. The [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) keeps it short. `history.ts` is a full example in about 100 lines. These rules help a small model use your tools:
+Start with a local stdio server and simple object arguments supported by Voz's on-device schema. Remote HTTP servers and OAuth are not supported by this client. The [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) keeps it short. `history.ts` is a full example in about 100 lines. These rules help a small model use your tools:
 
 - Have a few tools that each do a whole task, instead of one tool per API call.
 - Write the description as you would for a new colleague: what the tool does, and when to use it.

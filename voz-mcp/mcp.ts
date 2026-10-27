@@ -1,4 +1,5 @@
 import type { Schema } from "voz";
+import { z } from "zod";
 
 export type ServerConfig = {
   command: string;
@@ -14,6 +15,9 @@ export type JsonSchema = {
   items?: JsonSchema;
   properties?: Record<string, JsonSchema>;
   required?: string[];
+  additionalProperties?: boolean;
+  minimum?: number;
+  maximum?: number;
 };
 export type Tool = {
   server: string;
@@ -33,6 +37,17 @@ const extraPaths = [
 
 export function toolID(tool: Tool) {
   return `${tool.server}/${tool.name}`;
+}
+
+export function validateArguments(tool: Tool, args: object): void {
+  const validator = z.fromJSONSchema(
+    tool.inputSchema as z.core.JSONSchema.JSONSchema,
+  );
+  const result = validator.safeParse(args);
+  if (!result.success)
+    throw new Error(
+      `Invalid arguments for ${toolID(tool)}: ${result.error.message}`,
+    );
 }
 
 export function pickPrompt(text: string, tools: Tool[]) {
