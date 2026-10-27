@@ -161,12 +161,14 @@ async function connect(
   do {
     const page = await client.listTools(cursor ? { cursor } : undefined);
     tools.push(
-      ...page.tools.map((tool) => ({
-        server: name,
-        name: tool.name,
-        description: tool.description,
-        inputSchema: tool.inputSchema as JsonSchema,
-      })),
+      ...page.tools
+        .filter((tool) => tool.annotations?.destructiveHint !== true)
+        .map((tool) => ({
+          server: name,
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema as JsonSchema,
+        })),
     );
     cursor = page.nextCursor;
   } while (cursor);

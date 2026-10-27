@@ -41,7 +41,7 @@ agent open an issue in joelheile/voz titled hotkey breaks after sleep
 
 Voz starts each server when the extension loads. For each request, the on-device model first picks one tool from the list, then fills in that tool's arguments. Code keeps an optional argument only if you said its value, because the model tends to make values up. The answer shows as a notification, or Voz types it into the front app.
 
-The client only supports servers that run as a local command (stdio). It sends the model up to 40 tools. Keep the list short, because the model picks better from fewer tools.
+It skips tools that their server marks as destructive (`destructiveHint`), so a misheard request can't delete or overwrite anything through them. Tools without that mark are offered, so only add servers whose tools you are fine running by voice. The client only supports servers that run as a local command (stdio). It sends the model up to 40 tools. Keep the list short, because the model picks better from fewer tools.
 
 Each request calls one tool. It does not run a conversation or a sequence of dependent tools. Generated arguments are checked against the server's original JSON Schema before execution, including constraints omitted from the model's schema. Invalid arguments stop the command.
 
