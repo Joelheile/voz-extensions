@@ -1,14 +1,22 @@
 {
   "name": "voz-mcp",
   "version": "0.1.0",
-  "description": "Ask any MCP server by voice, and give AI tools read access to your Voz history",
+  "description": "MCP server for your Voz dictation history. Search what you said from Claude Code, Codex and Claude Desktop",
   "type": "module",
   "keywords": [
     "voz-package",
+    "voz",
     "mcp",
-    "model-context-protocol"
+    "mcp-server",
+    "model-context-protocol",
+    "claude-code",
+    "codex",
+    "claude-desktop",
+    "dictation"
   ],
   "license": "MIT",
+  "author": "Joël Heil Escobar",
+  "homepage": "https://github.com/Joelheile/voz-extensions/tree/main/voz-mcp#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Joelheile/voz-extensions.git",
@@ -16,7 +24,7 @@
   },
   "files": [
     "index.ts",
-    "mcp.ts",
+    "clients.ts",
     "history.ts",
     "README.md"
   ],
@@ -24,11 +32,11 @@
     "apiVersion": 2
   },
   "dependencies": {
-    "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/server": "2.4.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@types/bun": "latest",
     "typescript": "latest"
   }

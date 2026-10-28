@@ -5,17 +5,17 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import * as z from "zod/v4";
+import { z } from "zod";
 
-export type Dictation = { createdAt: string; app: string | null; text: string };
-export type Search = {
+type Dictation = { createdAt: string; app: string | null; text: string };
+type Search = {
   query?: string;
   app?: string;
   since?: string;
   limit: number;
 };
 
-export const defaultPath = join(
+const defaultPath = join(
   homedir(),
   "Library/Application Support/voz/history.sqlite",
 );
@@ -58,7 +58,7 @@ function localTime(utc: string) {
 }
 
 function server(database: Database) {
-  const server = new McpServer({ name: "voz-history", version: "0.1.0" });
+  const server = new McpServer({ name: "voz", version: "0.1.0" });
   server.registerTool(
     "search_dictations",
     {

@@ -1,23 +1,29 @@
 {
-  "name": "voz-calendar",
+  "name": "voz-things3",
   "version": "0.1.0",
-  "description": "Say \"calendar\" to add time blocks to Apple Calendar or move events, by voice",
+  "description": "Dictate to-dos into Things 3 with Voz. Say \"add todo\" and it fills in the project, dates, checklist and notes",
   "type": "module",
   "keywords": [
     "voz-package",
-    "calendar",
-    "time-blocking"
+    "voz",
+    "things3",
+    "things",
+    "todo",
+    "dictation",
+    "voice",
+    "macos"
   ],
   "license": "MIT",
+  "author": "Joël Heil Escobar",
+  "homepage": "https://github.com/Joelheile/voz-extensions/tree/main/voz-things3#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Joelheile/voz-extensions.git",
-    "directory": "voz-calendar"
+    "directory": "voz-things3"
   },
   "files": [
     "index.ts",
-    "calendar.ts",
-    "eventkit.js",
+    "things.ts",
     "README.md"
   ],
   "voz": {
