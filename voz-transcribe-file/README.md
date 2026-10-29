@@ -23,7 +23,7 @@ You need Voz with extension API 3, and a Parakeet speech model picked in Setting
 ## How it works
 
 - Voz transcribes the file on your Mac with Parakeet. Nothing leaves the Mac
-- Voz finds the speakers with pyannote's community-1 diarization model, and counts them itself. The first file downloads that model, 22 MB
+- Voz finds the speakers with NVIDIA's Nemotron 3 diarization model, and counts up to 8 itself. The first file downloads that model, 95 MB
 - An hour of audio takes about a minute
 - `meeting.mp3` becomes `meeting.md` in the same folder. If that file exists, you get `meeting 2.md`. Voz never overwrites a file
 - Voz reads audio such as MP3, M4A, WAV, AIFF and FLAC, and video such as MP4, MOV and M4V, where it uses only the sound. MKV and WebM don't work
