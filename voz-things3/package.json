@@ -1,7 +1,7 @@
 {
   "name": "voz-things3",
   "version": "0.1.0",
-  "description": "Dictate to-dos into Things 3 with Voz. Say \"add todo\" and it fills in the project, dates, checklist and notes",
+  "description": "I say \"add todo\" and Voz sends the rest to Things 3, with the project, dates, checklist and notes filled in. If I was reading a mail or a web page, the to-do links back to it.",
   "type": "module",
   "keywords": [
     "voz-package",
@@ -27,7 +27,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 2
+    "apiVersion": 4
   },
   "dependencies": {
     "chrono-node": "2.10.3"

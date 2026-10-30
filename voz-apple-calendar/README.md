@@ -1,6 +1,6 @@
 # voz-apple-calendar
 
-Say "calendar" at the start of a dictation to add an event to Apple Calendar, find free time for it, or move, resize, rename or relocate an event you already have.
+I use this to plan my day without opening Calendar. Say "calendar" at the start of a dictation to add an event to Apple Calendar, find free time for it, or move, resize, rename or relocate an event you already have.
 
 ```
 calendar deep work tomorrow at 9 for 2 hours

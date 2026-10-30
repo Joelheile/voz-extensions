@@ -1,15 +1,15 @@
 # Voz extensions
 
-Extensions I built for [Voz](https://voz.joels.tech). Each folder is its own npm package. They are not part of Voz, and you don't need them to use it. To build your own, read [EXTENSIONS.md](https://github.com/Joelheile/voz/blob/main/EXTENSIONS.md).
+I built these for myself, to make [Voz](https://voz.joels.tech) fit how I work. Each folder is its own npm package. They are not part of Voz, and you don't need them to use it. To build your own, read [EXTENSIONS.md](https://github.com/Joelheile/voz/blob/main/EXTENSIONS.md).
 
-| Package                                    | Say                     | What it does                                                                      |
-| ------------------------------------------ | ----------------------- | --------------------------------------------------------------------------------- |
-| [voz-things3](voz-things3)                 | "add todo …"            | Adds a to-do to Things 3 with its project, dates, checklist and notes             |
-| [voz-apple-calendar](voz-apple-calendar)   | "calendar …"            | Adds events, finds free time, and moves, resizes or renames events                |
-| [voz-mcp](voz-mcp)                         | Press "Connect AI apps" | Lets Claude Code, Codex and Claude Desktop search your Voz history                |
-| [voz-transcribe-file](voz-transcribe-file) | Drop a file             | Turns an audio or video file into a Markdown transcript with each speaker's turns |
+| Package                                    | I use it to                                                                     | Say                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------ |
+| [voz-things3](voz-things3)                 | Add to-dos to Things 3 with the project, dates, checklist and notes filled in   | "add todo …"             |
+| [voz-apple-calendar](voz-apple-calendar)   | Add events to Apple Calendar, find free time, and move, resize or rename events | "calendar …"             |
+| [voz-mcp](voz-mcp)                         | Let Claude Code, Codex and Claude Desktop search my dictation history           | Press "Connect AI apps"  |
+| [voz-transcribe-file](voz-transcribe-file) | Turn an audio or video file into a Markdown transcript, split by speaker        | Drop a file on the notch |
 
-They need Voz with extension API 2, which adds commands at the start of a dictation and `ctx.generate` for the on-device model. voz-transcribe-file needs API 3, which adds `audioDrop` and `ctx.transcribe`.
+voz-things3, voz-apple-calendar and voz-mcp need Voz with extension API 4. voz-transcribe-file needs API 3, which adds `audioDrop` and `ctx.transcribe`.
 
 ## Develop
 

@@ -1,6 +1,6 @@
 # voz-things3
 
-Say "add todo" at the start of a dictation, and Voz adds the rest as a to-do in [Things 3](https://culturedcode.com/things/). A bare "todo" is not a trigger, so a code comment like "todo refactor this" stays text.
+I use this to capture to-dos without leaving what I am doing. Say "add todo" at the start of a dictation, and Voz adds the rest as a to-do in [Things 3](https://culturedcode.com/things/), with the project, dates, checklist and notes filled in. A bare "todo" is not a trigger, so a code comment like "todo refactor this" stays text.
 
 ```
 add todo write the launch tweet for voz, deadline Friday, checklist record demo video, write the hook, schedule it

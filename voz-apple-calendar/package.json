@@ -1,7 +1,7 @@
 {
   "name": "voz-apple-calendar",
   "version": "0.1.0",
-  "description": "Add, move and resize Apple Calendar events by voice with Voz, and find free time for new ones",
+  "description": "I say \"calendar dentist Wednesday at 8:30\" and the event lands in Apple Calendar. It also finds free time and moves, resizes or renames events I already have.",
   "type": "module",
   "keywords": [
     "voz-package",
@@ -32,7 +32,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 2
+    "apiVersion": 4
   },
   "dependencies": {
     "chrono-node": "2.10.3"

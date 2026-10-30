@@ -1,6 +1,6 @@
 # voz-transcribe-file
 
-Drag an audio or video file toward the top of your screen, and the notch opens a drop zone. Drop the file there, and Voz writes a Markdown transcript next to it and copies it to the clipboard.
+I built this to turn recordings into text without leaving Voz. Drag an audio or video file toward the top of your screen, and the notch opens a drop zone. Drop the file there, and Voz writes a Markdown transcript next to it and copies it to the clipboard.
 
 If more than one person talks, the transcript splits into turns:
 

@@ -54,9 +54,10 @@ export default defineExtension((voz) => {
     .split(",")
     .map((word) => word.trim())
     .filter(Boolean)) {
-    voz.registerCommand(
-      trigger,
-      (event, ctx) =>
+    voz.registerCommand({
+      phrase: trigger,
+      at: "start",
+      run: (event, ctx) =>
         reporting(ctx, async () => {
           if (!event.text)
             return ctx.notify(
@@ -82,13 +83,13 @@ export default defineExtension((voz) => {
           );
           ctx.notify(describe(next));
         }),
-      { at: "start" },
-    );
+    });
   }
 
-  voz.registerCommand(
-    "undo calendar",
-    (_, ctx) =>
+  voz.registerCommand({
+    phrase: "undo calendar",
+    at: "start",
+    run: (_, ctx) =>
       reporting(ctx, async () => {
         const file = Bun.file(lastChange);
         if (!(await file.exists()))
@@ -99,8 +100,7 @@ export default defineExtension((voz) => {
         await rm(lastChange);
         ctx.notify(message);
       }),
-    { at: "start" },
-  );
+  });
 });
 
 async function reporting(ctx: Context, work: () => Promise<void>) {

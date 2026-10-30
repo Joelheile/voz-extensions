@@ -34,9 +34,10 @@ export default defineExtension((voz) => {
     .split(",")
     .map((word) => word.trim())
     .filter(Boolean)) {
-    voz.registerCommand(
-      trigger,
-      async (event, ctx) => {
+    voz.registerCommand({
+      phrase: trigger,
+      at: "start",
+      async run(event, ctx) {
         if (!event.text)
           return ctx.notify("Say the to-do after the trigger word");
         const [things, source] = await Promise.all([
@@ -63,8 +64,7 @@ export default defineExtension((voz) => {
             : sent,
         );
       },
-      { at: "start" },
-    );
+    });
   }
 });
 
