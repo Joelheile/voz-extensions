@@ -1,6 +1,6 @@
 # voz-mcp
 
-An [MCP](https://modelcontextprotocol.io) server that lets Claude Code, Codex and Claude Desktop search what you dictated with Voz.
+I built this so Claude Code, Codex and Claude Desktop can look up what I dictated. It is an [MCP](https://modelcontextprotocol.io) server over your Voz history, and the apps search it by words, app and date.
 
 Ask your AI app things like:
 
@@ -23,7 +23,7 @@ Then open the Voz panel and press **Connect AI apps**. Voz finds the AI apps on 
 | Codex          | `codex mcp add voz`                                                  |
 | Claude Desktop | Adds `voz` to `claude_desktop_config.json`. Restart Claude to use it |
 
-Pressing it again is safe. It replaces the `voz` entry and leaves your other servers alone. When Voz updates its copy of Bun, the extension points connected apps to the new one.
+Once one app is connected, the button leaves the panel. To connect an app you install later, open Extensions, select voz-mcp and press **Run** next to **Connect AI apps**. It connects only the apps that are not connected yet and leaves your other servers alone. When Voz updates its copy of Bun, the extension points connected apps to the new one.
 
 If Voz finds none of these apps, it copies the server config, so you can paste it into any MCP app:
 

@@ -29,8 +29,11 @@ export async function installedClients(): Promise<Client[]> {
   const codex = Bun.which("codex", { PATH: path });
   return [
     claude &&
-      cliClient("Claude Code", claude, claudeCodeEntry, ["--scope", "user"]),
-    codex && cliClient("Codex", codex, codexEntry, []),
+      cliClient("Claude Code", claude, path, claudeCodeEntry, [
+        "--scope",
+        "user",
+      ]),
+    codex && cliClient("Codex", codex, path, codexEntry, []),
     existsSync("/Applications/Claude.app") && claudeDesktop,
   ].filter((client): client is Client => Boolean(client));
 }
@@ -38,6 +41,7 @@ export async function installedClients(): Promise<Client[]> {
 function cliClient(
   name: string,
   binary: string,
+  path: string,
   entry: () => Promise<Server | undefined>,
   scope: string[],
 ): Client {
@@ -46,17 +50,20 @@ function cliClient(
     current: entry,
     async connect(server) {
       if (await entry())
-        await run([binary, "mcp", "remove", ...scope, serverName]);
-      await run([
-        binary,
-        "mcp",
-        "add",
-        ...scope,
-        serverName,
-        "--",
-        server.command,
-        ...server.args,
-      ]);
+        await run([binary, "mcp", "remove", ...scope, serverName], path);
+      await run(
+        [
+          binary,
+          "mcp",
+          "add",
+          ...scope,
+          serverName,
+          "--",
+          server.command,
+          ...server.args,
+        ],
+        path,
+      );
     },
   };
 }
@@ -103,6 +110,13 @@ export function sameServer(a: Server, b: Server) {
   return a.command === b.command && a.args.join("\0") === b.args.join("\0");
 }
 
+export async function unconnected(clients: Client[], server: Server) {
+  const current = await Promise.all(clients.map((client) => client.current()));
+  return clients.filter(
+    (_, index) => !current[index] || !sameServer(current[index], server),
+  );
+}
+
 export function connectedMessage(connected: Client[], failures: string[]) {
   const names = connected.map((client) => client.name);
   const restart = connected.filter((client) => client.restart);
@@ -116,7 +130,7 @@ export function connectedMessage(connected: Client[], failures: string[]) {
     .join(". ");
 }
 
-function list(names: string[]) {
+export function list(names: string[]) {
   return names.length < 2
     ? names.join("")
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
@@ -126,8 +140,13 @@ async function readIfExists(path: string) {
   return existsSync(path) ? readFile(path, "utf8") : undefined;
 }
 
-async function run(command: string[]) {
-  const child = Bun.spawn(command, { stdin: "ignore", stderr: "pipe" });
+// CLIs such as codex are Node scripts, so they need the login shell's PATH to find node
+async function run(command: string[], path: string) {
+  const child = Bun.spawn(command, {
+    stdin: "ignore",
+    stderr: "pipe",
+    env: { ...process.env, PATH: path },
+  });
   const [error, code] = await Promise.all([
     new Response(child.stderr).text(),
     child.exited,

@@ -1,7 +1,7 @@
 {
   "name": "voz-mcp",
   "version": "0.1.0",
-  "description": "MCP server for your Voz dictation history. Search what you said from Claude Code, Codex and Claude Desktop",
+  "description": "I use this to let Claude Code, Codex and Claude Desktop search what I dictated, by words, app and date. It reads my Voz history on my Mac and never changes it.",
   "type": "module",
   "keywords": [
     "voz-package",
@@ -29,7 +29,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 2
+    "apiVersion": 4
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",

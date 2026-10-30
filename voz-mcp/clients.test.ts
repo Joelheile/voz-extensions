@@ -5,15 +5,20 @@ import {
   sameServer,
   serverIn,
   shellPath,
+  unconnected,
   withServer,
   type Client,
 } from "./clients";
 
 const server = { command: "/bun", args: ["/voz-mcp/history.ts"] };
-const client = (name: string, restart?: boolean): Client => ({
+const client = (
+  name: string,
+  restart?: boolean,
+  current?: typeof server,
+): Client => ({
   name,
   restart,
-  current: async () => undefined,
+  current: async () => current,
   connect: async () => {},
 });
 
@@ -41,6 +46,16 @@ test("reads the voz entry, and notices when Bun moved", () => {
   expect(serverIn(undefined)).toBeUndefined();
   expect(sameServer(server, { ...server })).toBe(true);
   expect(sameServer(server, { ...server, command: "/new/bun" })).toBe(false);
+});
+
+test("connects only the apps without the current server", async () => {
+  const apps = [
+    client("Claude Code", false, server),
+    client("Codex"),
+    client("Claude Desktop", true, { ...server, command: "/old/bun" }),
+  ];
+  const names = (await unconnected(apps, server)).map((app) => app.name);
+  expect(names).toEqual(["Codex", "Claude Desktop"]);
 });
 
 test("names every connected app and asks to restart only the ones that need it", () => {
