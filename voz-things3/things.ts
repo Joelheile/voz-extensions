@@ -1,13 +1,13 @@
 import * as chrono from "chrono-node";
 
-export type Fields = {
+type Fields = {
   title: string;
   list: string;
   checklist?: string[];
   notes?: string;
 };
 
-export type Todo = Fields & {
+type Todo = Fields & {
   listID?: string;
   when?: string;
   deadline?: string;
@@ -38,19 +38,29 @@ const thingsWhen = new Map([
   ["sometime", "someday"],
   ["irgendwann", "someday"],
 ]);
-const deadlineWord = "(?:deadline|due|by|until|bis|spätestens)";
-const endsWithDeadlineWord = new RegExp(`\\b${deadlineWord}\\s+$`, "i");
+const deadlineWord = "(?:deadline|due|by|until|bis|spätestens|fällig)";
+const deadlineLead = `\\b${deadlineWord}(?:\\s+(?:is|for|on|at|ist|am|zum))?\\s+`;
+const endsWithDeadlineLead = new RegExp(`${deadlineLead}$`, "i");
+const listWord =
+  "(?:folder|project|area|list|in|into|ordner|projekt|bereich|liste|im)";
+const fillerWords = new RegExp(
+  `\\b(?:${deadlineWord}|${listWord}|is|for|on|at|the|my)\\b`,
+  "gi",
+);
 const sectionWord = /(?:^|[,.;:]\s*)\b(checklist|notes?|tags?)\b[\s,;:]*/gi;
 
-export const instructions = `You turn a dictated to-do into fields for the Things app.
-- title: what to do, as a short imperative phrase. Leave out dates. Keep the user's language
-- list: the listed project or area the dictation names, else "${inbox}"
-- checklist: only the steps the user lists. Never repeat the title
-- notes: only context the user adds that is not a step
-Leave out fields the user does not mention.
+export const instructions = `You turn a dictated to-do into fields for the Things app. People dictate loosely: they ramble, repeat words and correct themselves. Work out what they mean from everything they said.
+- title: one short action that starts with a verb, at most 8 words, such as "Email Anna the contract". Fix the verb form, so "built" becomes "Build". When the user corrects a word, such as "no, not X, Y", use the corrected word. Leave out filler, repeats, dates, deadlines and list names. Keep the user's language
+- list: the listed project or area the user names, such as "folder work" or "in Voz", else "${inbox}"
+- notes: only details needed to do the task that do not fit the title, such as who, why or what to bring. Most to-dos have no notes. Never put dates, deadlines, list names or corrections in notes
+- checklist: only when the user lists two or more separate steps. Most to-dos have no checklist
+Leave out fields you have nothing for.
 
 Example: "call Milan tomorrow"
 {"title": "Call Milan", "list": "${inbox}"}
+
+Example: "built the landing page with crockbot, no, not crockpot, grok bot. deadline for tomorrow. folder work"
+{"title": "Build the landing page with Grok bot", "list": "Work"}
 
 Example: "prepare the pitch deck for the startup by Friday, I need a market slide, a team slide and send it to Anna"
 {"title": "Prepare the pitch deck", "list": "Founding startup", "checklist": ["Market slide", "Team slide", "Send it to Anna"]}
@@ -85,23 +95,34 @@ export function toTodo(
   const title = dates.phrases.reduce(
     (title, phrase) =>
       title.replace(
-        new RegExp(
-          `\\s*(\\b${deadlineWord}\\s+)?${RegExp.escape(phrase)}`,
-          "i",
-        ),
+        new RegExp(`\\s*(${deadlineLead})?${RegExp.escape(phrase)}`, "i"),
         "",
       ),
     fields.title,
   );
   const spokeSections = spoken.checklist || spoken.notes || spoken.tags;
+  const list =
+    namedList(spoken.main, things.lists) ??
+    (says(dictation, fields.list) ? fields.list : inbox);
+  const saysOnlyWhereOrWhen = (text: string) =>
+    !words(withoutPhrases(text, [...dates.phrases, list])).length;
+  const checklist = fields.checklist?.filter(
+    (item) => item !== fields.title && !saysOnlyWhereOrWhen(item),
+  );
   const todo: Todo = {
     title: title.replace(/[\s,;:]+$/, ""),
-    list: says(dictation, fields.list) ? fields.list : inbox,
-    listID: listID(fields.list, dictation, things.lists),
+    list,
+    listID: listID(list, things.lists),
     checklist: spokeSections
       ? spoken.checklist
-      : fields.checklist?.filter((item) => item !== fields.title),
-    notes: spokeSections ? spoken.notes : fields.notes,
+      : checklist && checklist.length > 1
+        ? checklist
+        : undefined,
+    notes: spokeSections
+      ? spoken.notes
+      : fields.notes && !saysOnlyWhereOrWhen(fields.notes)
+        ? fields.notes
+        : undefined,
     when: dates.when,
     deadline: dates.deadline,
     tags: spoken.tags?.flatMap((said) =>
@@ -113,8 +134,27 @@ export function toTodo(
   ) as Todo;
 }
 
-function listID(name: string, dictation: string, lists: ThingsList[]) {
-  if (name === inbox || !says(dictation, name)) return undefined;
+function namedList(text: string, lists: ThingsList[]) {
+  return lists.find((list) =>
+    new RegExp(
+      `\\b${listWord}\\s+(?:the\\s+|my\\s+)?${RegExp.escape(list.name)}\\b`,
+      "i",
+    ).test(text),
+  )?.name;
+}
+
+function withoutPhrases(text: string, phrases: string[]) {
+  return phrases
+    .reduce(
+      (rest, phrase) =>
+        rest.replace(new RegExp(RegExp.escape(phrase), "gi"), ""),
+      text,
+    )
+    .replace(fillerWords, "");
+}
+
+function listID(name: string, lists: ThingsList[]) {
+  if (name === inbox) return undefined;
   const matches = lists.filter((list) => list.name === name);
   if (matches.length > 1)
     throw new Error(
@@ -172,7 +212,7 @@ function spokenDates(text: string, now: Date) {
   for (const result of parse(text, now)) {
     phrases.push(result.text);
     const date = result.start.date();
-    if (endsWithDeadlineWord.test(text.slice(0, result.index)))
+    if (endsWithDeadlineLead.test(text.slice(0, result.index)))
       deadline ??= isoDate(date);
     else
       when ??= result.start.isCertain("hour")

@@ -1,0 +1,39 @@
+{
+  "name": "voz-things3",
+  "version": "0.1.0",
+  "description": "I say \"add todo\" and Voz sends the rest to Things 3, with the project, dates, checklist and notes filled in. If I was reading a mail or a web page, the to-do links back to it.",
+  "type": "module",
+  "keywords": [
+    "voz-package",
+    "voz",
+    "things3",
+    "things",
+    "todo",
+    "dictation",
+    "voice",
+    "macos"
+  ],
+  "license": "MIT",
+  "author": "Joël Heil Escobar",
+  "homepage": "https://github.com/Joelheile/voz-extensions/tree/main/voz-things3#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Joelheile/voz-extensions.git",
+    "directory": "voz-things3"
+  },
+  "files": [
+    "index.ts",
+    "things.ts",
+    "README.md"
+  ],
+  "voz": {
+    "apiVersion": 4
+  },
+  "dependencies": {
+    "chrono-node": "2.10.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
+  }
+}

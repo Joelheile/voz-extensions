@@ -19,7 +19,7 @@ export default defineExtension((voz) => {
       type: "string",
       title: "Trigger words",
       description: "Start a dictation with one of these, separated by commas",
-      default: "todo, to do",
+      default: "add todo, add a todo, add to do, new todo",
     },
     quickEntry: {
       type: "boolean",
@@ -34,14 +34,15 @@ export default defineExtension((voz) => {
     .split(",")
     .map((word) => word.trim())
     .filter(Boolean)) {
-    voz.registerCommand(
-      trigger,
-      async (event, ctx) => {
+    voz.registerCommand({
+      phrase: trigger,
+      at: "start",
+      async run(event, ctx) {
         if (!event.text)
           return ctx.notify("Say the to-do after the trigger word");
         const [things, source] = await Promise.all([
           thingsLists(),
-          frontSource(ctx.app.bundleID).catch(() => unreadable),
+          frontSource(ctx.app.bundleID),
         ]);
         const fields = await ctx.generate({
           instructions,
@@ -63,12 +64,12 @@ export default defineExtension((voz) => {
             : sent,
         );
       },
-      { at: "start" },
-    );
+    });
   }
 });
 
 const unreadable: "unreadable" = "unreadable";
+const notAuthorized = "-1743";
 
 async function thingsLists(): Promise<{ lists: ThingsList[]; tags: string[] }> {
   try {
@@ -80,9 +81,18 @@ async function thingsLists(): Promise<{ lists: ThingsList[]; tags: string[] }> {
   }
 }
 
-async function frontSource(bundleID?: string): Promise<Source | undefined> {
+async function frontSource(
+  bundleID?: string,
+): Promise<Source | typeof unreadable | undefined> {
   const script = sourceScript(bundleID);
-  return script ? jxa(script, 2000).catch(() => undefined) : undefined;
+  if (!script) return undefined;
+  try {
+    return await jxa(script, 2000);
+  } catch (error) {
+    return (error as Error).message.includes(notAuthorized)
+      ? unreadable
+      : undefined;
+  }
 }
 
 async function jxa(script: string, timeout?: number) {

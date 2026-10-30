@@ -150,3 +150,67 @@ test("reads the source only from mail and browsers", () => {
   expect(sourceScript("com.apple.Notes")).toBeUndefined();
   expect(sourceScript(undefined)).toBeUndefined();
 });
+
+test("files a rambling dictation with a self-correction like the user meant it", () => {
+  const lists = [
+    { id: "area-work", name: "Work" },
+    { id: "project-voz", name: "Voz" },
+  ];
+  expect(
+    toTodo(
+      {
+        title: "Build GTM engineer with Grok bot",
+        list: inbox,
+        checklist: ["Folder work"],
+        notes: "Deadline for tomorrow",
+      },
+      "Built Gtm Engineer with Crockbot. No, not crockpot, grog? Gro k? Bot Bot Bot Bot. Deadline for tomorrow. Folder work.",
+      monday,
+      { lists, tags: [] },
+    ),
+  ).toEqual({
+    title: "Build GTM engineer with Grok bot",
+    list: "Work",
+    listID: "area-work",
+    deadline: "2026-10-27",
+  });
+});
+
+test("reads deadlines with a word between the deadline word and the date", () => {
+  expect(todo("Send the deck", "send the deck, deadline is Friday")).toEqual({
+    title: "Send the deck",
+    list: inbox,
+    deadline: "2026-10-30",
+  });
+  expect(todo("Pay rent", "pay rent, due on Friday").deadline).toBe(
+    "2026-10-30",
+  );
+});
+
+test("files into a project or area the user names with a list word", () => {
+  const lists = [{ id: "project-voz", name: "Voz" }];
+  for (const dictation of [
+    "fix the hotkey bug, project voz",
+    "fix the hotkey bug in voz",
+    "fix the hotkey bug, ordner voz",
+  ])
+    expect(
+      toTodo({ title: "Fix the hotkey bug", list: inbox }, dictation, monday, {
+        lists,
+        tags: [],
+      }),
+    ).toMatchObject({ list: "Voz", listID: "project-voz" });
+});
+
+test("drops a generated checklist with a single item", () => {
+  expect(
+    todo("Book flights", "book flights to Lisbon", {
+      checklist: ["Book flights to Lisbon"],
+    }).checklist,
+  ).toBeUndefined();
+  expect(
+    todo("Plan the trip", "plan the trip, book flights and find a hotel", {
+      checklist: ["Book flights", "Find a hotel"],
+    }).checklist,
+  ).toEqual(["Book flights", "Find a hotel"]);
+});

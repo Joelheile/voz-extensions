@@ -1,19 +1,20 @@
 # Voz extensions
 
-Extensions I built for [Voz](https://voz.joels.tech). Each folder is its own npm package. They are not part of Voz, and you don't need them to use it. To build your own, read [EXTENSIONS.md](https://github.com/Joelheile/voz/blob/main/EXTENSIONS.md).
+I built these for myself, to make [Voz](https://voz.joels.tech) fit how I work. Each folder is its own npm package. They are not part of Voz, and you don't need them to use it. To build your own, read [EXTENSIONS.md](https://github.com/Joelheile/voz/blob/main/EXTENSIONS.md).
 
-| Package                      | Say          | What it does                                                            |
-| ---------------------------- | ------------ | ----------------------------------------------------------------------- |
-| [voz-things](voz-things)     | "todo …"     | Adds a to-do to Things 3 with its project, dates, checklist and notes   |
-| [voz-calendar](voz-calendar) | "calendar …" | Adds time blocks to Apple Calendar and moves events                     |
-| [voz-mcp](voz-mcp)           | "agent …"    | Calls tools on your MCP servers, and serves your Voz history to AI apps |
+| Package                                    | I use it to                                                                     | Say                      |
+| ------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------ |
+| [voz-things3](voz-things3)                 | Add to-dos to Things 3 with the project, dates, checklist and notes filled in   | "add todo …"             |
+| [voz-apple-calendar](voz-apple-calendar)   | Add events to Apple Calendar, find free time, and move, resize or rename events | "calendar …"             |
+| [voz-mcp](voz-mcp)                         | Let Claude Code, Codex and Claude Desktop search my dictation history           | Press "Connect AI apps"  |
+| [voz-transcribe-file](voz-transcribe-file) | Turn an audio or video file into a Markdown transcript, split by speaker        | Drop a file on the notch |
 
-They need Voz with extension API 2, which adds commands at the start of a dictation and `ctx.generate` for the on-device model.
+voz-things3, voz-apple-calendar and voz-mcp need Voz with extension API 4. voz-transcribe-file needs API 3, which adds `audioDrop` and `ctx.transcribe`.
 
 ## Develop
 
 ```sh
-cd voz-things
+cd voz-things3
 bun install
 bun test
 voz dev .
@@ -24,21 +25,24 @@ voz dev .
 ## Publish
 
 ```sh
-cd voz-things
+cd voz-things3
 npm publish
 ```
 
-Then anyone can run `voz install voz-things`.
+npm asks for your 2FA code. Then anyone can run `voz install voz-things3`, and the `voz-package` keyword lists it in the Voz Extensions page.
+
+- Voz runs the TypeScript as is, so there is no build step. Every file a package imports must be in `files` in its `package.json`. Run `npm pack --dry-run` to see what ships
+- Publish a package only after a Voz release supports its `apiVersion`. Older Voz shows "Update Voz" instead of loading it
+- Bump `version` before each publish. npm never accepts the same version twice
 
 ## How they read a dictation
 
 The on-device model is small, and it fills fields the user never said. So each extension asks it only for what needs judgment, and code does the rest:
 
-| Extension    | The model                       | Code                                              |
-| ------------ | ------------------------------- | ------------------------------------------------- |
-| voz-things   | Title, project, steps and notes | Dates, deadline, tags, spoken checklist and notes |
-| voz-calendar | Add or move, and a title        | Time, length, calendar and which event            |
-| voz-mcp      | Which tool, and its arguments   | Drops optional arguments the user did not say     |
+| Extension          | The model                                   | Code                                              |
+| ------------------ | ------------------------------------------- | ------------------------------------------------- |
+| voz-things3        | Title, project, steps and notes             | Dates, deadline, tags, spoken checklist and notes |
+| voz-apple-calendar | Add or change, title, event words and place | Time, length, free time, calendar and which event |
 
 Where code checks the model, it compares the result with the dictation. Code also does all date math with [chrono](https://github.com/wanasit/chrono).
 

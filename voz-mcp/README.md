@@ -1,9 +1,13 @@
 # voz-mcp
 
-Connects Voz to [MCP](https://modelcontextprotocol.io) servers in both directions:
+I built this so Claude Code, Codex and Claude Desktop can look up what I dictated. It is an [MCP](https://modelcontextprotocol.io) server over your Voz history, and the apps search it by words, app and date.
 
-- **Client.** Say "agent" at the start of a dictation, and Voz calls a tool from your MCP servers.
-- **History server.** AI apps such as Claude Desktop, Cursor or Claude Code can search what you dictated.
+Ask your AI app things like:
+
+```
+What did I dictate to Anna yesterday?
+Find the invoice numbers I said in Mail last week
+```
 
 ## Install
 
@@ -11,48 +15,22 @@ Connects Voz to [MCP](https://modelcontextprotocol.io) servers in both direction
 voz install voz-mcp
 ```
 
-The client needs a Mac with Apple Intelligence. The history server runs with the copy of Bun that Voz downloads for extensions.
+Then open the Voz panel and press **Connect AI apps**. Voz finds the AI apps on your Mac and adds a server named `voz` to each:
 
-## Call MCP tools by voice
+| App            | How Voz adds it                                                      |
+| -------------- | -------------------------------------------------------------------- |
+| Claude Code    | `claude mcp add --scope user voz`, for every project                 |
+| Codex          | `codex mcp add voz`                                                  |
+| Claude Desktop | Adds `voz` to `claude_desktop_config.json`. Restart Claude to use it |
 
-Put your servers in `~/.voz/mcp.json`. It uses the same format as Claude Desktop, so you can copy servers from `~/Library/Application Support/Claude/claude_desktop_config.json`.
+Once one app is connected, the button leaves the panel. To connect an app you install later, open Extensions, select voz-mcp and press **Run** next to **Connect AI apps**. It connects only the apps that are not connected yet and leaves your other servers alone. When Voz updates its copy of Bun, the extension points connected apps to the new one.
 
-```json
-{
-  "mcpServers": {
-    "files": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/you/Documents"
-      ]
-    }
-  }
-}
-```
-
-Then say:
-
-```
-agent read the file notes.md in my documents
-agent open an issue in joelheile/voz titled hotkey breaks after sleep
-```
-
-Voz starts each server when the extension loads. For each request, the on-device model first picks one tool from the list, then fills in that tool's arguments. Code keeps an optional argument only if you said its value, because the model tends to make values up. The answer shows as a notification, or Voz types it into the front app.
-
-It skips tools that their server marks as destructive (`destructiveHint`), so a misheard request can't delete or overwrite anything through them. Tools without that mark are offered, so only add servers whose tools you are fine running by voice. The client only supports servers that run as a local command (stdio). It sends the model up to 40 tools. Keep the list short, because the model picks better from fewer tools.
-
-Each request calls one tool. It does not run a conversation or a sequence of dependent tools. Generated arguments are checked against the server's original JSON Schema before execution, including constraints omitted from the model's schema. Invalid arguments stop the command.
-
-## Search your history from AI apps
-
-In Voz, open Extensions, then run "Copy history server config". Paste the result into your AI app's MCP config, such as:
+If Voz finds none of these apps, it copies the server config, so you can paste it into any MCP app:
 
 ```json
 {
   "mcpServers": {
-    "voz-history": {
+    "voz": {
       "command": "/Users/you/Library/Application Support/voz/bun/1.4.3/bun",
       "args": ["/Users/you/.voz/packages/node_modules/voz-mcp/history.ts"]
     }
@@ -60,24 +38,8 @@ In Voz, open Extensions, then run "Copy history server config". Paste the result
 }
 ```
 
-The server has one tool, `search_dictations`. It searches by words, app and date, newest first. It opens the history database read-only. The app you connect it to can read your dictations, so only add it to apps you trust.
+## The tool
 
-## Settings
+The server has one tool, `search_dictations`. It searches by words, app and date, newest first, and returns the local time, the app and the text of each dictation.
 
-| Setting         | Default           | What it does                                                                      |
-| --------------- | ----------------- | --------------------------------------------------------------------------------- |
-| Trigger word    | `agent`           | Word that starts a request                                                        |
-| Servers file    | `~/.voz/mcp.json` | Your MCP servers, in Claude Desktop's format                                      |
-| Show the answer | `notify`          | `notify` shows a short message. `insert` types the full answer into the front app |
-
-## Write your own MCP server
-
-Start with a local stdio server and simple object arguments supported by Voz's on-device schema. Remote HTTP servers and OAuth are not supported by this client. The [TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) keeps it short. `history.ts` is a full example in about 100 lines. These rules help a small model use your tools:
-
-- Have a few tools that each do a whole task, instead of one tool per API call.
-- Write the description as you would for a new colleague: what the tool does, and when to use it.
-- Describe each argument and give an example value.
-- Make arguments optional when there is a sensible default.
-- Return short text that people can read, not raw JSON.
-- When nothing matches or an input is wrong, say what to try instead.
-- Mark tools that only read with `readOnlyHint`.
+It opens the history database read-only, and it runs on your Mac. The app you connect can read your dictations, so connect only apps you trust.

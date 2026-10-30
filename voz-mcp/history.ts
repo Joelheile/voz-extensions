@@ -1,21 +1,21 @@
 // A read-only MCP server for your Voz dictation history.
-// Run it with Bun: bun history.ts. The "Copy history server config" action in Voz gives you the exact command.
+// Run it with Bun: bun history.ts. The "Connect AI apps" action in Voz adds it to your AI apps with the exact command.
 import { Database } from "bun:sqlite";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import * as z from "zod/v4";
+import { z } from "zod";
 
-export type Dictation = { createdAt: string; app: string | null; text: string };
-export type Search = {
+type Dictation = { createdAt: string; app: string | null; text: string };
+type Search = {
   query?: string;
   app?: string;
   since?: string;
   limit: number;
 };
 
-export const defaultPath = join(
+const defaultPath = join(
   homedir(),
   "Library/Application Support/voz/history.sqlite",
 );
@@ -58,7 +58,7 @@ function localTime(utc: string) {
 }
 
 function server(database: Database) {
-  const server = new McpServer({ name: "voz-history", version: "0.1.0" });
+  const server = new McpServer({ name: "voz", version: "0.1.0" });
   server.registerTool(
     "search_dictations",
     {
