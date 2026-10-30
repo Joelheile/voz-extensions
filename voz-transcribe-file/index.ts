@@ -13,6 +13,7 @@ export default defineExtension((voz) => {
     const text = markdown(transcript);
     const output = transcriptPath(path);
     writeFileSync(output, text, { flag: "wx" });
+    voz.addHistory({ text, seconds: transcript.seconds, file: output });
     await copy(text);
     const speakers =
       transcript.speakers > 1 ? ` with ${transcript.speakers} speakers` : "";
@@ -20,7 +21,11 @@ export default defineExtension((voz) => {
   });
 });
 
+// Voz starts without a locale, and pbcopy then reads UTF-8 as Mac Roman: ö becomes √∂
 async function copy(text: string) {
-  const pbcopy = Bun.spawn(["pbcopy"], { stdin: new Blob([text]) });
+  const pbcopy = Bun.spawn(["pbcopy"], {
+    stdin: new Blob([text]),
+    env: { ...process.env, LANG: "en_US.UTF-8" },
+  });
   if ((await pbcopy.exited) !== 0) throw new Error("pbcopy failed");
 }
