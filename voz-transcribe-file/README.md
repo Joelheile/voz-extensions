@@ -1,6 +1,6 @@
 # voz-transcribe-file
 
-I built this to turn recordings into text without leaving Voz. Drag an audio or video file toward the top of your screen, and the notch opens a drop zone. Drop the file there, and Voz writes a Markdown transcript next to it and copies it to the clipboard.
+Turn recordings into text without leaving Voz. Drag an audio or video file toward the top of your screen, and the notch opens a drop zone. Drop the file there, and Voz writes a Markdown transcript next to it and copies it to the clipboard.
 
 If more than one person talks, the transcript splits into turns:
 
@@ -18,7 +18,7 @@ With one speaker, you get plain text.
 voz install voz-transcribe-file
 ```
 
-You need Voz with extension API 3, and a Parakeet speech model picked in Settings.
+You need Voz with extension API 4, and a Parakeet speech model picked in Settings.
 
 ## How it works
 

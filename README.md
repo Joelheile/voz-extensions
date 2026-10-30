@@ -9,7 +9,7 @@ I built these for myself, to make [Voz](https://voz.joels.tech) fit how I work. 
 | [voz-mcp](voz-mcp)                         | Let Claude Code, Codex and Claude Desktop search my dictation history           | Press "Connect AI apps"  |
 | [voz-transcribe-file](voz-transcribe-file) | Turn an audio or video file into a Markdown transcript, split by speaker        | Drop a file on the notch |
 
-voz-things3, voz-apple-calendar and voz-mcp need Voz with extension API 4. voz-transcribe-file needs API 3, which adds `audioDrop` and `ctx.transcribe`.
+Every package needs Voz with extension API 4.
 
 ## Develop
 

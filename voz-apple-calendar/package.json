@@ -1,7 +1,7 @@
 {
   "name": "voz-apple-calendar",
   "version": "0.1.0",
-  "description": "I say \"calendar dentist Wednesday at 8:30\" and the event lands in Apple Calendar. It also finds free time and moves, resizes or renames events I already have.",
+  "description": "Add events to Apple Calendar, move them and change their times by voice. Try \"calendar deep work tomorrow at 9 for 2 hours\", \"calendar move my 3pm to Thursday\" or \"calendar push standup by 15 minutes\".",
   "type": "module",
   "keywords": [
     "voz-package",

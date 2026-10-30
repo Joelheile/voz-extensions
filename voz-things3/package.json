@@ -1,7 +1,7 @@
 {
   "name": "voz-things3",
   "version": "0.1.0",
-  "description": "I say \"add todo\" and Voz sends the rest to Things 3, with the project, dates, checklist and notes filled in. If I was reading a mail or a web page, the to-do links back to it.",
+  "description": "Say \"add todo\" and the to-do goes to Things 3 with its project, dates, checklist and notes. Jot down tasks quickly without leaving what you are doing.",
   "type": "module",
   "keywords": [
     "voz-package",
