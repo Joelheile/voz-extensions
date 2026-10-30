@@ -23,6 +23,7 @@ You need Voz with extension API 3, and a Parakeet speech model picked in Setting
 ## How it works
 
 - Voz transcribes the file on your Mac with Parakeet. Nothing leaves the Mac
+- Voz fixes words from your dictionary, the same way it does when you dictate
 - Voz finds the speakers with NVIDIA's Nemotron 3 diarization model, and counts up to 8 itself. The first file downloads that model, 95 MB
 - An hour of audio takes about a minute
 - `meeting.mp3` becomes `meeting.md` in the same folder. If that file exists, you get `meeting 2.md`. Voz never overwrites a file
