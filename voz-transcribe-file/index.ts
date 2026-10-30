@@ -13,6 +13,7 @@ export default defineExtension((voz) => {
     const text = markdown(transcript);
     const output = transcriptPath(path);
     writeFileSync(output, text, { flag: "wx" });
+    voz.addHistory({ text, seconds: transcript.seconds, file: output });
     await copy(text);
     const speakers =
       transcript.speakers > 1 ? ` with ${transcript.speakers} speakers` : "";
