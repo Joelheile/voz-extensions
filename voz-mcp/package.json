@@ -1,7 +1,7 @@
 {
   "name": "voz-mcp",
   "version": "0.1.0",
-  "description": "I use this to let Claude Code, Codex and Claude Desktop search what I dictated, by words, app and date. It reads my Voz history on my Mac and never changes it.",
+  "description": "Ask Claude Code, Codex or Claude Desktop about anything you dictated. They search your Voz history by words, app and date, and only read it.",
   "type": "module",
   "keywords": [
     "voz-package",

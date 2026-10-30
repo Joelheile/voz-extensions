@@ -1,6 +1,6 @@
 # voz-mcp
 
-I built this so Claude Code, Codex and Claude Desktop can look up what I dictated. It is an [MCP](https://modelcontextprotocol.io) server over your Voz history, and the apps search it by words, app and date.
+Let Claude Code, Codex and Claude Desktop look up what you dictated. This is an [MCP](https://modelcontextprotocol.io) server over your Voz history, and the apps search it by words, app and date.
 
 Ask your AI app things like:
 

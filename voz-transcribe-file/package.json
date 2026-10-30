@@ -1,7 +1,7 @@
 {
   "name": "voz-transcribe-file",
   "version": "0.1.0",
-  "description": "I drop an audio or video file on the Voz notch and get a Markdown transcript next to it, split by speaker. It runs on my Mac and copies the text too.",
+  "description": "Drop an audio or video file on the notch and get a Markdown transcript next to it, split by speaker. It runs on your Mac and copies the text too.",
   "type": "module",
   "keywords": [
     "voz-package",
@@ -28,7 +28,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 3
+    "apiVersion": 4
   },
   "devDependencies": {
     "@types/bun": "latest",
