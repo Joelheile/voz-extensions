@@ -1,4 +1,4 @@
-import { defineExtension } from "voz";
+import { defineExtension, type Context } from "voz";
 import {
   instructions,
   schema,
@@ -37,33 +37,34 @@ export default defineExtension((voz) => {
     voz.registerCommand({
       phrase: trigger,
       at: "start",
-      async run(event, ctx) {
-        if (!event.text)
-          return ctx.notify("Say the to-do after the trigger word");
-        const [things, source] = await Promise.all([
-          thingsLists(),
-          frontSource(ctx.app.bundleID),
-        ]);
-        const fields = await ctx.generate({
-          instructions,
-          prompt: `Dictation: ${event.text}`,
-          schema: schema(things.lists),
-        });
-        const todo = withSource(
-          toTodo(fields, event.text, new Date(), things),
-          source === unreadable ? undefined : source,
-        );
-        if (!todo.title) return ctx.notify("Say what you want to do");
-        await open(thingsURL(todo, settings.quickEntry));
-        const sent = settings.quickEntry
-          ? `Opened "${todo.title}" for review in Things`
-          : `Sent "${todo.title}" to Things`;
-        ctx.notify(
-          source === unreadable
-            ? `${sent} without a link. Allow Voz to control ${ctx.app.name ?? "that app"} in System Settings > Privacy & Security > Automation`
-            : sent,
-        );
-      },
+      run: (event, ctx) =>
+        reporting(ctx, async () => {
+          if (!event.text)
+            return ctx.notify("Say the to-do after the trigger word");
+          const [things, source] = await Promise.all([
+            thingsLists(),
+            frontSource(ctx.app.bundleID),
+          ]);
+          const fields = await ctx.generate({
+            instructions,
+            prompt: `Dictation: ${event.text}`,
+            schema: schema(things.lists),
+          });
+          const todo = withSource(
+            toTodo(fields, event.text, new Date(), things),
+            source === unreadable ? undefined : source,
+          );
+          if (!todo.title) return ctx.notify("Say what you want to do");
+          await open(thingsURL(todo, settings.quickEntry));
+          const sent = settings.quickEntry
+            ? `Opened "${todo.title}" for review in Things`
+            : `Sent "${todo.title}" to Things`;
+          ctx.notify(
+            source === unreadable
+              ? `${sent} without a link. Allow Voz to control ${ctx.app.name ?? "that app"} in System Settings > Privacy & Security > Automation`
+              : sent,
+          );
+        }),
     });
   }
 });
@@ -95,7 +96,7 @@ async function frontSource(
   }
 }
 
-async function jxa(script: string, timeout?: number) {
+async function jxa<Result>(script: string, timeout?: number): Promise<Result> {
   const process = Bun.spawn(["osascript", "-l", "JavaScript", "-e", script], {
     stderr: "pipe",
     timeout,
@@ -107,6 +108,14 @@ async function jxa(script: string, timeout?: number) {
   ]);
   if (code !== 0) throw new Error(`exit ${code}: ${error.trim()}`);
   return JSON.parse(output);
+}
+
+async function reporting(ctx: Context, work: () => Promise<void>) {
+  try {
+    await work();
+  } catch (error) {
+    ctx.notify(error instanceof Error ? error.message : String(error));
+  }
 }
 
 async function open(url: string) {

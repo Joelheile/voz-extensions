@@ -404,3 +404,26 @@ test("says what changed in plain words", () => {
     ),
   ).toBe("Design review now ends at 4:30 PM");
 });
+
+test("reads dates and times the way people dictate them", () => {
+  expect(add("Termin", "calendar termin am 10.11. um 14 uhr")).toMatchObject({
+    start: new Date(2026, 10, 10, 14).getTime(),
+  });
+  expect(add("Lunch", "calendar lunch at noon next week")).toMatchObject({
+    start: new Date(2026, 10, 2, 12).getTime(),
+  });
+  expect(add("Call", "calendar call tomorrow um 10h")).toMatchObject({
+    start: at(27, 10),
+    end: at(27, 11),
+  });
+  expect(add("Meeting", "calendar meeting tomorrow 9 to 10am")).toMatchObject({
+    start: at(27, 9),
+    end: at(27, 10),
+  });
+});
+
+test("adds a pull request review instead of moving an event", () => {
+  expect(
+    add("Pull request review", "calendar pull request review tomorrow at 3"),
+  ).toMatchObject({ action: "add", start: at(27, 15) });
+});

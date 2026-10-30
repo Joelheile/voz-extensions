@@ -21,7 +21,7 @@ function run([command, json]) {
 function requestAccess() {
   if (accessStatus() === notDetermined) {
     $.EKEventStore.alloc.init.requestFullAccessToEventsWithCompletion(() => {});
-    const giveUp = Date.now() + 60_000;
+    const giveUp = Date.now() + 6_000;
     while (accessStatus() === notDetermined && Date.now() < giveUp)
       $.NSRunLoop.currentRunLoop.runUntilDate(
         $.NSDate.dateWithTimeIntervalSinceNow(0.1),

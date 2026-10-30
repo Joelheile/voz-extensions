@@ -1,5 +1,5 @@
 import { CalendarError, findEvent, words, type CalendarEvent } from "./events";
-import { freeSlot, roundUp, type WorkDay } from "./slots";
+import { days, freeSlot, roundUp, type WorkDay } from "./slots";
 import {
   addDays,
   at,
@@ -10,7 +10,7 @@ import {
   type When,
 } from "./times";
 
-export { CalendarError, type CalendarEvent } from "./events";
+export type { CalendarEvent } from "./events";
 
 type CalendarInfo = { id: string; title: string; account: string };
 export type Snapshot = {
@@ -43,7 +43,7 @@ type Settings = WorkDay & { minutes: number; calendar: string };
 const minute = 60_000;
 const lateGrace = 15 * minute;
 const changeLead =
-  /^\W*(?:(?:change|move|update) calendar|(?:add to )?calendar\W+(?:please\W+)?(?:move|push|pull|reschedule|extend|shorten|rename|change|update|delay|postpone|verschieb\w*|änder\w*))\b/i;
+  /^\W*(?:(?:change|move|update) calendar|(?:add to )?calendar\W+(?:please\W+)?(?:move|push|pull(?! request)|reschedule|extend|shorten|rename|change|update|delay|postpone|verschieb\w*|änder\w*))\b/i;
 const changeVerbs =
   /\b(?:move|push|pull|bring|reschedule|extend|shorten|rename|change|update|delay|postpone|make|should|end|ends|finish|verschieb\w*|verleg\w*|verlänger\w*|kürz\w*|änder\w*|umbenenn\w*)\b/i;
 const ownerDay =
@@ -160,7 +160,9 @@ function addedTimes(
   const minutes = when.minutes ?? settings.minutes;
   if (!when.start && !when.end)
     return freeSlot(events, when, minutes, now, settings);
-  const day = when.day ?? upcomingDay(when, now);
+  const day =
+    when.day ??
+    (when.week === "next" ? days(when, now)[0] : upcomingDay(when, now));
   const start = when.start
     ? at(day, when.start).getTime()
     : roundUp(now.getTime());

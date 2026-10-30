@@ -14,7 +14,8 @@ database.run(
 database.run(`INSERT INTO transcript VALUES
   ('2026-10-20 09:00:00.000', 'Mail', 'Send the invoice to Milan'),
   ('2026-10-25 18:30:00.000', 'Slack', 'Lunch on Thursday?'),
-  ('2026-10-26 08:00:00.000', 'Slack', 'The invoice is paid')`);
+  ('2026-10-26 08:00:00.000', 'Slack', 'The invoice is paid'),
+  ('2026-10-27 10:00:00.000', 'Microsoft Outlook', 'Ärger mit dem Server, 100% sicher')`);
 database.close();
 const client = new Client({ name: "test", version: "0" });
 await client.connect(
@@ -56,4 +57,23 @@ test("searches dictations newest first, by words, app and date", async () => {
     "No dictations match",
   );
   expect(await call({ query: "slack", app: "Slack" })).toContain("Lunch");
+});
+
+test("matches umlauts in any case and part of an app name", async () => {
+  expect(await call({ query: "ärger" })).toContain("Ärger mit dem Server");
+  expect(await call({ query: "arger" })).toContain("Ärger mit dem Server");
+  expect(await call({ app: "outlook" })).toContain("Ärger mit dem Server");
+});
+
+test("treats % and _ as plain characters", async () => {
+  expect(await call({ query: "1%0" })).toStartWith("No dictations match");
+  expect(await call({ query: "100%" })).toContain("Ärger");
+});
+
+test("rejects a since that is not a date", async () => {
+  const result = await client.callTool({
+    name: "search_dictations",
+    arguments: { since: "yesterday" },
+  });
+  expect(result.isError).toBe(true);
 });

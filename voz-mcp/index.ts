@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineExtension } from "voz";
 import {
   connectedMessage,
@@ -11,7 +12,7 @@ import {
 
 const server: Server = {
   command: process.execPath,
-  args: [new URL("./history.ts", import.meta.url).pathname],
+  args: [fileURLToPath(new URL("./history.ts", import.meta.url))],
 };
 
 export default defineExtension((voz) => {
@@ -73,6 +74,10 @@ async function refreshConnected() {
 }
 
 async function copy(text: string) {
-  const pbcopy = Bun.spawn(["pbcopy"], { stdin: new Blob([text]) });
+  // Voz starts without a locale, and pbcopy then reads UTF-8 as Mac Roman
+  const pbcopy = Bun.spawn(["pbcopy"], {
+    stdin: new Blob([text]),
+    env: { ...process.env, LANG: "en_US.UTF-8" },
+  });
   if ((await pbcopy.exited) !== 0) throw new Error("pbcopy failed");
 }
