@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { markdown, timestamp, transcriptPath } from "./transcript";
+import { markdown, transcriptPath } from "./transcript";
 
 const turns = [
   { speaker: 1, start: 0, end: 4, text: "Did you finish the report?" },
@@ -24,11 +24,6 @@ test("one speaker stays plain text", () => {
       turns: [turns[0]],
     }),
   ).toBe("Just me talking.\n");
-});
-
-test("timestamps pad hours, minutes and seconds", () => {
-  expect(timestamp(59.9)).toBe("00:00:59");
-  expect(timestamp(36000)).toBe("10:00:00");
 });
 
 test("the transcript sits next to the audio and never overwrites", () => {

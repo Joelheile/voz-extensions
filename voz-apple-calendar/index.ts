@@ -1,4 +1,5 @@
-import { mkdir, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { defineExtension, type Context } from "voz";
 import {
   describe,
@@ -10,7 +11,7 @@ import {
   type Snapshot,
 } from "./calendar";
 
-const script = new URL("./eventkit.js", import.meta.url).pathname;
+const script = fileURLToPath(new URL("./eventkit.js", import.meta.url));
 const days = 14;
 
 type Saved = { plan: Plan; id: string };
@@ -76,7 +77,6 @@ export default defineExtension((voz) => {
           ]);
           const next = plan(request, snapshot, new Date(), settings, dictation);
           const { id } = await eventKit<{ id: string }>(next.action, next);
-          await mkdir(voz.paths.data, { recursive: true });
           await Bun.write(
             lastChange,
             JSON.stringify({ plan: next, id } satisfies Saved),

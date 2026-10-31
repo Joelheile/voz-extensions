@@ -37,7 +37,7 @@ export function freeSlot(
   );
 }
 
-function days(when: When, now: Date): Date[] {
+export function days(when: When, now: Date): Date[] {
   if (when.day) return [when.day];
   const today = midnight(now);
   if (when.part === "evening") return [today];

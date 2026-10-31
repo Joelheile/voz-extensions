@@ -71,7 +71,7 @@ const hourWord = `(${alternatives([...hourNumbers.keys()])})`;
 const minuteWord = `(${alternatives([...minuteNumbers.keys()])})`;
 const amountWord = alternatives([...amounts.keys()]);
 const duration = new RegExp(
-  `\\b(?:(half an?|quarter of an?|a quarter|eine halbe|einer halben|halbe)|(\\d+(?:[.,]\\d+)?|${amountWord})(\\s+and a half)?)\\s*(minutes?|mins?|hours?|hrs?|h|stunden?|std|minuten?)\\b(\\s+and a half)?`,
+  `(?<!\\b(?:at|um|von|ab|bis)\\s+)\\b(?:(half an?|quarter of an?|a quarter|eine halbe|einer halben|halbe)|(\\d+(?:[.,]\\d+)?|${amountWord})(\\s+and a half)?)\\s*(minutes?|mins?|hours?|hrs?|h|stunden?|std|minuten?)\\b(\\s+and a half)?`,
   "gi",
 );
 const startLead = "at|from|um|von|ab|starting|starts?|it";
@@ -111,6 +111,11 @@ function corrected(said: When, fix: When): When {
 function parseOne(text: string, now: Date): When {
   let rest = text;
   const when: When = {};
+  const dotted = rest.match(/\b(\d{1,2})\.(\d{1,2})\.(?!\d)/);
+  if (dotted) {
+    when.day = monthDay(now, Number(dotted[2]), Number(dotted[1]));
+    rest = rest.replace(dotted[0], " ");
+  }
   rest = rest.replace(duration, (...match) => {
     when.minutes = durationMinutes(match);
     return " ";
@@ -135,11 +140,25 @@ function parseOne(text: string, now: Date): When {
   return definedFields(when);
 }
 
+function monthDay(now: Date, month: number, day: number) {
+  const date = new Date(now.getFullYear(), month - 1, day);
+  return midnight(
+    date < midnight(now)
+      ? new Date(now.getFullYear() + 1, month - 1, day)
+      : date,
+  );
+}
+
 function clocks(text: string, evening: boolean): Pick<When, "start" | "end"> {
   const found: { time: Clock; lead: string; explicit: boolean }[] = [];
   for (const match of text.matchAll(clock)) {
     const [, lead = "", hours, minutes = "0", suffix = ""] = match;
-    const looksLikeTime = Boolean(suffix) || /[:.]/.test(match[0]);
+    const looksLikeTime =
+      Boolean(suffix) ||
+      /[:.]/.test(match[0]) ||
+      /^\s*(?:to|-|until|till|til|bis)\b/i.test(
+        text.slice(match.index + match[0].length),
+      );
     if (!lead && !looksLikeTime) continue;
     const hour = Number(hours);
     if (hour > 24 || Number(minutes) > 59) continue;

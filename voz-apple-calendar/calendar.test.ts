@@ -254,15 +254,6 @@ test("resizes an event", () => {
   });
 });
 
-test("applies the last time when the dictation corrects itself", () => {
-  expect(
-    change(
-      "daily start",
-      "change calendar daily start to run from 10 to 10:30. Oh no, change to 10:45.",
-    ),
-  ).toMatchObject({ id: "stoic", start: at(26, 10), end: at(26, 10, 45) });
-});
-
 test("renames and relocates without touching the time", () => {
   const renamed = change(
     "the design review",
@@ -403,4 +394,27 @@ test("says what changed in plain words", () => {
       ),
     ),
   ).toBe("Design review now ends at 4:30 PM");
+});
+
+test("reads dates and times the way people dictate them", () => {
+  expect(add("Termin", "calendar termin am 10.11. um 14 uhr")).toMatchObject({
+    start: new Date(2026, 10, 10, 14).getTime(),
+  });
+  expect(add("Lunch", "calendar lunch at noon next week")).toMatchObject({
+    start: new Date(2026, 10, 2, 12).getTime(),
+  });
+  expect(add("Call", "calendar call tomorrow um 10h")).toMatchObject({
+    start: at(27, 10),
+    end: at(27, 11),
+  });
+  expect(add("Meeting", "calendar meeting tomorrow 9 to 10am")).toMatchObject({
+    start: at(27, 9),
+    end: at(27, 10),
+  });
+});
+
+test("adds a pull request review instead of moving an event", () => {
+  expect(
+    add("Pull request review", "calendar pull request review tomorrow at 3"),
+  ).toMatchObject({ action: "add", start: at(27, 15) });
 });

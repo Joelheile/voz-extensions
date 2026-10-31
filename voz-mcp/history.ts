@@ -1,4 +1,3 @@
-// A read-only MCP server for your Voz dictation history.
 // Run it with Bun: bun history.ts. The "Connect AI apps" action in Voz adds it to your AI apps with the exact command.
 import { Database } from "bun:sqlite";
 import { homedir } from "node:os";
@@ -20,28 +19,39 @@ const defaultPath = join(
   "Library/Application Support/voz/history.sqlite",
 );
 
-export function search(
+function search(
   database: Database,
   { query, app, since, limit }: Search,
 ): Dictation[] {
   return database
-    .query<Dictation, Record<string, string | number | null>>(
+    .query<Dictation, Record<string, string | null>>(
       `SELECT createdAt, appName AS app, finalText AS text FROM transcript
-       WHERE ($query IS NULL OR finalText LIKE '%' || $query || '%' OR appName LIKE $query)
-         AND ($app IS NULL OR appName LIKE $app)
-         AND ($since IS NULL OR createdAt >= $since)
-       ORDER BY createdAt DESC LIMIT $limit`,
+       WHERE $since IS NULL OR createdAt >= $since
+       ORDER BY createdAt DESC`,
     )
-    .all({
-      $query: query ?? null,
-      $app: app ?? null,
-      $since: since ?? null,
-      $limit: limit,
-    })
+    .all({ $since: since ?? null })
+    .filter(
+      (row) =>
+        (!query || contains(row.text, query) || contains(row.app, query)) &&
+        (!app || contains(row.app, app)),
+    )
+    .slice(0, limit)
     .map((row) => ({ ...row, createdAt: localTime(row.createdAt) }));
 }
 
-export function format(dictations: Dictation[]) {
+// SQLite LIKE folds only ASCII case, so match in JS the way Voz's own search does
+function contains(text: string | null, words: string) {
+  return fold(text ?? "").includes(fold(words));
+}
+
+function fold(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Mn}/gu, "")
+    .toLowerCase();
+}
+
+function format(dictations: Dictation[]) {
   if (!dictations.length)
     return "No dictations match. Try fewer words or drop the filters.";
   return dictations
@@ -77,6 +87,7 @@ function server(database: Database) {
           .describe('App name, such as "Slack" or "Mail"'),
         since: z
           .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD, such as 2026-10-29")
           .optional()
           .describe("Only dictations on or after this UTC date, as YYYY-MM-DD"),
         limit: z
