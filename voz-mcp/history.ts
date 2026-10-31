@@ -1,4 +1,3 @@
-// A read-only MCP server for your Voz dictation history.
 // Run it with Bun: bun history.ts. The "Connect AI apps" action in Voz adds it to your AI apps with the exact command.
 import { Database } from "bun:sqlite";
 import { homedir } from "node:os";

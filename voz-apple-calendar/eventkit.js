@@ -1,5 +1,4 @@
 // Runs in osascript (JavaScript for Automation) and talks to Calendar through EventKit.
-// Usage: osascript -l JavaScript eventkit.js <list|add|update|remove> '<json>'
 ObjC.import("EventKit");
 
 const notDetermined = 0;

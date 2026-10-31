@@ -11,7 +11,7 @@ export function markdown(transcript: Transcript) {
   return `${turns.join("\n\n")}\n`;
 }
 
-export function timestamp(seconds: number) {
+function timestamp(seconds: number) {
   const whole = Math.floor(seconds);
   const parts = [whole / 3600, (whole % 3600) / 60, whole % 60];
   return parts

@@ -8,7 +8,6 @@ type CodexConfig = { mcp_servers?: Record<string, Partial<Server>> };
 
 export type Client = {
   name: string;
-  // Read the voz entry the app has now, or undefined when it has none
   current(): Promise<Server | undefined>;
   connect(server: Server): Promise<void>;
   restart?: boolean;

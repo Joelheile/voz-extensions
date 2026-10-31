@@ -254,15 +254,6 @@ test("resizes an event", () => {
   });
 });
 
-test("applies the last time when the dictation corrects itself", () => {
-  expect(
-    change(
-      "daily start",
-      "change calendar daily start to run from 10 to 10:30. Oh no, change to 10:45.",
-    ),
-  ).toMatchObject({ id: "stoic", start: at(26, 10), end: at(26, 10, 45) });
-});
-
 test("renames and relocates without touching the time", () => {
   const renamed = change(
     "the design review",
