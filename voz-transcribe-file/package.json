@@ -28,7 +28,8 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 4
+    "apiVersion": 4,
+    "icon": "file-volume"
   },
   "devDependencies": {
     "@types/bun": "latest",
