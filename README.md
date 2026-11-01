@@ -6,7 +6,6 @@ I built these for myself, to make [Voz](https://voz.joels.tech) fit how I work. 
 | ------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------ |
 | [voz-things3](voz-things3)                 | Add to-dos to Things 3 with the project, dates, checklist and notes filled in   | "add todo …"             |
 | [voz-apple-calendar](voz-apple-calendar)   | Add events to Apple Calendar, find free time, and move, resize or rename events | "calendar …"             |
-| [voz-mcp](voz-mcp)                         | Let Claude Code, Codex and Claude Desktop search my dictation history           | Press "Connect AI apps"  |
 | [voz-transcribe-file](voz-transcribe-file) | Turn an audio or video file into a Markdown transcript, split by speaker        | Drop a file on the notch |
 
 Every package needs Voz with extension API 4.
