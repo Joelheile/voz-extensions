@@ -18,7 +18,7 @@ With one speaker, you get plain text.
 voz install voz-transcribe-file
 ```
 
-You need Voz with extension API 4, and a Parakeet speech model picked in Settings.
+You need Voz 0.2.0 or later, and a Parakeet speech model picked in Settings.
 
 ## How it works
 

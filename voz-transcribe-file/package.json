@@ -28,7 +28,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 4,
+    "apiVersion": 6,
     "icon": "file-volume"
   },
   "devDependencies": {

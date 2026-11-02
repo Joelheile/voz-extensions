@@ -8,7 +8,7 @@ I built these for myself, to make [Voz](https://voz.joels.tech) fit how I work. 
 | [voz-apple-calendar](voz-apple-calendar)   | Add events to Apple Calendar, find free time, and move, resize or rename events | "calendar …"             |
 | [voz-transcribe-file](voz-transcribe-file) | Turn an audio or video file into a Markdown transcript, split by speaker        | Drop a file on the notch |
 
-Every package needs Voz with extension API 4.
+Every package needs Voz 0.2.0 or later, which has extension API 6.
 
 ## Develop
 
