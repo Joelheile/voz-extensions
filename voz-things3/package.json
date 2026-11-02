@@ -27,7 +27,7 @@
     "README.md"
   ],
   "voz": {
-    "apiVersion": 4
+    "apiVersion": 6
   },
   "dependencies": {
     "chrono-node": "2.10.3"
