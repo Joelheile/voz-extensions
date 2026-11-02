@@ -109,3 +109,31 @@ test("reads a bare hour as evening when the plan is an evening one", () => {
     minute: 0,
   });
 });
+
+test("reads German dates with a year", () => {
+  expect(parseWhen("Am 5.12.2026 ab 16 Uhr deutsche Zeit", monday)).toEqual({
+    day: new Date(2026, 11, 5),
+    start: { hour: 16, minute: 0 },
+    zone: "Europe/Berlin",
+  });
+  expect(parseWhen("am 3.1.27 um 9 Uhr", monday)).toEqual({
+    day: new Date(2027, 0, 3),
+    start: { hour: 9, minute: 0 },
+  });
+  expect(parseWhen("am 5.12. ab 16 Uhr", monday).day).toEqual(
+    new Date(2026, 11, 5),
+  );
+});
+
+test("reads spoken time zones", () => {
+  expect(parseWhen("ab 16 Uhr deutsche Zeit", monday)).toEqual({
+    start: { hour: 16, minute: 0 },
+    zone: "Europe/Berlin",
+  });
+  expect(parseWhen("at 9am New York time", monday).zone).toBe(
+    "America/New_York",
+  );
+  expect(parseWhen("at 3 PST", monday).zone).toBe("America/Los_Angeles");
+  expect(parseWhen("um 10 Uhr MEZ", monday).zone).toBe("Europe/Berlin");
+  expect(parseWhen("was ist das um 10", monday).zone).toBeUndefined();
+});

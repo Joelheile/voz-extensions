@@ -2,7 +2,9 @@ import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { defineExtension, type Context } from "voz";
 import {
+  confirmation,
   describe,
+  edited,
   instructions,
   plan,
   schema,
@@ -22,7 +24,8 @@ export default defineExtension((voz) => {
       type: "string",
       title: "Trigger words",
       description: "Start a dictation with one of these, separated by commas",
-      default: "calendar, add to calendar, change calendar, move calendar",
+      default:
+        "calendar, kalender, add to calendar, change calendar, move calendar",
     },
     calendar: {
       type: "string",
@@ -75,7 +78,23 @@ export default defineExtension((voz) => {
               schema,
             }),
           ]);
-          const next = plan(request, snapshot, new Date(), settings, dictation);
+          const planned = plan(
+            request,
+            snapshot,
+            new Date(),
+            settings,
+            dictation,
+          );
+          let next = planned;
+          // Voz 0.2.0 and older have no ctx.ask, so they add without the card
+          if (ctx.ask) {
+            const answer = await ctx.ask(
+              confirmation(planned, snapshot.calendars),
+            );
+            if (!answer) return;
+            if (answer.button === "Copy") return copy(ctx, sentence(dictation));
+            next = edited(planned, answer.values, snapshot.calendars);
+          }
           const { id } = await eventKit<{ id: string }>(next.action, next);
           await Bun.write(
             lastChange,
@@ -102,6 +121,17 @@ export default defineExtension((voz) => {
       }),
   });
 });
+
+async function copy(ctx: Context, text: string) {
+  const clipboard = Bun.spawn(["pbcopy"], { stdin: new Blob([text]) });
+  if ((await clipboard.exited) !== 0)
+    throw new Error("Could not copy the text");
+  ctx.insert(text);
+}
+
+function sentence(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 async function reporting(ctx: Context, work: () => Promise<void>) {
   try {

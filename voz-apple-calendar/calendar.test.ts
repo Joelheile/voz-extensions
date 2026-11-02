@@ -1,7 +1,9 @@
 import { expect, test } from "bun:test";
 import {
   calendarLabels,
+  confirmation,
   describe,
+  edited,
   plan,
   undoing,
   type CalendarEvent,
@@ -417,4 +419,102 @@ test("adds a pull request review instead of moving an event", () => {
   expect(
     add("Pull request review", "calendar pull request review tomorrow at 3"),
   ).toMatchObject({ action: "add", start: at(27, 15) });
+});
+
+test("asks with the planned fields and adds what the user edited", () => {
+  const dictation =
+    "kalender Fyg Moritz Entlassung Am 5.12.2026 ab 16 Uhr deutsche Zeit mit Location. Fritzlage.";
+  const planned = plan(
+    {
+      action: "add",
+      title: "Moritz Entlassung",
+      event: "",
+      location: "Fritzlage",
+    },
+    snapshot,
+    now,
+    settings,
+    dictation,
+  );
+  const card = confirmation(planned, snapshot.calendars);
+  expect(card.buttons).toEqual(["Copy", "Add"]);
+  expect(card.fields).toEqual([
+    { id: "title", label: "Title", type: "text", value: "Moritz Entlassung" },
+    {
+      id: "start",
+      label: "Starts",
+      type: "date",
+      value: Date.UTC(2026, 11, 5, 15),
+    },
+    {
+      id: "end",
+      label: "Ends",
+      type: "date",
+      value: Date.UTC(2026, 11, 5, 16),
+    },
+    { id: "location", label: "Location", type: "text", value: "Fritzlage" },
+    {
+      id: "calendar",
+      label: "Calendar",
+      type: "choice",
+      value: "Privat (iCloud)",
+      options: ["Arbeit", "Privat (iCloud)", "Privat (Google)"],
+    },
+  ]);
+  const values = Object.fromEntries(
+    card.fields!.map((field) => [field.id, field.value]),
+  );
+  expect(
+    edited(
+      planned,
+      { ...values, location: "Fritzlar", calendar: "Arbeit" },
+      snapshot.calendars,
+    ),
+  ).toMatchObject({
+    action: "add",
+    calendar: "work",
+    location: "Fritzlar",
+    title: "Moritz Entlassung",
+  });
+  expect(() =>
+    edited(planned, { ...values, end: values.start }, snapshot.calendars),
+  ).toThrow("end before it starts");
+});
+
+test("asks to save a change without a calendar choice", () => {
+  const planned = plan(
+    { action: "change", title: "", event: "standup", location: "" },
+    snapshot,
+    now,
+    settings,
+    "calendar push standup by 15 minutes",
+  );
+  const card = confirmation(planned, snapshot.calendars);
+  expect(card.title).toBe("Change Stand-up?");
+  expect(card.buttons).toEqual(["Copy", "Save"]);
+  expect(card.fields!.map((field) => field.id)).toEqual([
+    "title",
+    "start",
+    "end",
+    "location",
+  ]);
+});
+
+test("adds events at the time in the zone they name", () => {
+  const add = (dictation: string) =>
+    plan(
+      { action: "add", title: "Call", event: "", location: "" },
+      snapshot,
+      now,
+      settings,
+      dictation,
+    );
+  expect(
+    add("kalender Moritz Entlassung am 5.12.2026 ab 16 Uhr deutsche Zeit")
+      .start,
+  ).toBe(Date.UTC(2026, 11, 5, 15));
+  expect(add("calendar call tomorrow at 9am New York time")).toMatchObject({
+    start: Date.UTC(2026, 9, 27, 13),
+    end: Date.UTC(2026, 9, 27, 14),
+  });
 });

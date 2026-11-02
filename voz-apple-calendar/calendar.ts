@@ -1,3 +1,4 @@
+import type { Answer, AskField, AskOptions } from "voz";
 import { CalendarError, findEvent, words, type CalendarEvent } from "./events";
 import { days, freeSlot, roundUp, type WorkDay } from "./slots";
 import {
@@ -5,8 +6,10 @@ import {
   at,
   beforeCorrection,
   clockOf,
+  inZone,
   midnight,
   parseWhen,
+  type Clock,
   type When,
 } from "./times";
 
@@ -57,17 +60,23 @@ const earlierWords =
 const shiftWords =
   /\b(?:by|later|earlier|push|pull|delay|postpone|back|forward|später|früher|um)\b/i;
 
-export const instructions = `You read a dictated calendar request and fill in fields.
+export const instructions = `You read a dictated calendar request and fill in fields. Speech recognition wrote the dictation, so it can have misheard words, fillers and repeats.
 - action: "add" for a new event or time block. "change" to move, resize, rename or relocate an event that already exists, such as "move", "push", "change", "extend" or "rename".
-- title: for add, a short title in the dictation's language, without times or dates, such as "Deep work" or "Lunch with Tom". For change, the new name only if they rename it, else "".
+- title: for add, the title a person would type into their calendar, in the dictation's language. Include who and what, such as "Lunch with Tom" or "Call with Sarah about the pitch deck". Fix misheard words from context, such as "fyg" for "für", and drop fillers and repeats. Leave out the date, time, time zone, place, and words about the calendar itself, such as "calendar", "Kalender", "add" or "mit Location". For change, the new name only if they rename it, else "".
 - event: for change, the words that name the existing event, copied from the dictation, without the new time. For add, "".
-- location: a place or room they name, copied from the dictation, else "".
+- location: the place they name, such as a café, room, town or address, copied from the dictation. A time zone such as "New York time" or "deutsche Zeit" is not a place. Else "".
 
 Example: "calendar deep work tomorrow at 9 for 2 hours"
 {"action":"add","title":"Deep work","event":"","location":""}
 
-Example: "calendar lunch with Tom on Friday at noon at Café Nero"
+Example: "calendar um lunch with uh Tom on Friday at noon at Café Nero"
 {"action":"add","title":"Lunch with Tom","event":"","location":"Café Nero"}
+
+Example: "kalender fyg Lisa Geburtstag am 3.4. um 18 Uhr mit Location Hamburg"
+{"action":"add","title":"Lisas Geburtstag","event":"","location":"Hamburg"}
+
+Example: "calendar call with Ana at 9am London time about the the budget"
+{"action":"add","title":"Call with Ana about the budget","event":"","location":""}
 
 Example: "calendar find an hour tomorrow afternoon to write the board report"
 {"action":"add","title":"Write the board report","event":"","location":""}
@@ -164,16 +173,19 @@ function addedTimes(
     when.day ??
     (when.week === "next" ? days(when, now)[0] : upcomingDay(when, now));
   const start = when.start
-    ? at(day, when.start).getTime()
+    ? spokenTime(day, when.start, when.zone)
     : roundUp(now.getTime());
-  const end = when.end ? at(day, when.end).getTime() : start + minutes * minute;
+  const end = when.end
+    ? spokenTime(day, when.end, when.zone)
+    : start + minutes * minute;
   return checked(start, end);
 }
 
 function upcomingDay(when: When, now: Date) {
   const today = midnight(now);
   if (!when.start) return today;
-  const later = at(today, when.start).getTime() >= now.getTime() - lateGrace;
+  const later =
+    spokenTime(today, when.start, when.zone) >= now.getTime() - lateGrace;
   return later ? today : addDays(today, 1);
 }
 
@@ -226,11 +238,12 @@ function changedTimes(event: CalendarEvent, when: When, dictation: string) {
   const length = event.end - event.start;
   const original = new Date(event.start);
   const day = when.day ?? midnight(original);
-  let start =
-    when.start || when.day
-      ? at(day, when.start ?? clockOf(original)).getTime()
+  let start = when.start
+    ? spokenTime(day, when.start, when.zone)
+    : when.day
+      ? at(day, clockOf(original)).getTime()
       : event.start;
-  if (when.end) return checked(start, at(new Date(start), when.end).getTime());
+  if (when.end) return checked(start, spokenTime(day, when.end, when.zone));
   if (when.minutes === undefined) return checked(start, start + length);
   const amount = when.minutes * minute;
   if (extendWords.test(dictation))
@@ -242,6 +255,10 @@ function changedTimes(event: CalendarEvent, when: When, dictation: string) {
     return checked(start, start + length);
   }
   return checked(start, start + amount);
+}
+
+function spokenTime(day: Date, clock: Clock, zone?: string) {
+  return inZone(at(day, clock), zone).getTime();
 }
 
 function checked(start: number, end: number) {
@@ -281,6 +298,55 @@ export function describe(plan: Plan) {
     relocated && `at ${plan.location}`,
   ].filter(Boolean);
   return `Updated ${before.title}: ${changes.join(", ")}`;
+}
+
+export function confirmation(
+  plan: Plan,
+  calendars: CalendarInfo[],
+): AskOptions {
+  const fields: AskField[] = [
+    { id: "title", label: "Title", type: "text", value: plan.title },
+    { id: "start", label: "Starts", type: "date", value: plan.start },
+    { id: "end", label: "Ends", type: "date", value: plan.end },
+    { id: "location", label: "Location", type: "text", value: plan.location },
+  ];
+  if (plan.action === "update")
+    return {
+      title: `Change ${plan.before.title}?`,
+      fields,
+      buttons: ["Copy", "Save"],
+    };
+  const labels = calendarLabels(calendars);
+  const chosen = [...labels].find(([, id]) => id === plan.calendar)?.[0] ?? "";
+  return {
+    title: "Add to calendar?",
+    fields: [
+      ...fields,
+      {
+        id: "calendar",
+        label: "Calendar",
+        type: "choice",
+        value: chosen,
+        options: [...labels.keys()],
+      },
+    ],
+    buttons: ["Copy", "Add"],
+  };
+}
+
+export function edited(
+  plan: Plan,
+  values: NonNullable<Answer>["values"],
+  calendars: CalendarInfo[],
+): Plan {
+  const details = {
+    title: String(values.title).trim() || plan.title,
+    location: String(values.location).trim(),
+    ...checked(Number(values.start), Number(values.end)),
+  };
+  if (plan.action === "update") return { ...plan, ...details };
+  const calendar = calendarLabels(calendars).get(String(values.calendar));
+  return { ...plan, ...details, calendar: calendar ?? plan.calendar };
 }
 
 export function undoing(plan: Plan, id: string) {

@@ -1,6 +1,6 @@
 import * as chrono from "chrono-node";
 
-type Clock = { hour: number; minute: number };
+export type Clock = { hour: number; minute: number };
 export type Part = "morning" | "afternoon" | "evening";
 export type When = {
   day?: Date;
@@ -11,6 +11,7 @@ export type When = {
   part?: Part;
   next?: boolean;
   current?: boolean;
+  zone?: string;
 };
 
 const dayComponents: chrono.Component[] = ["day", "weekday", "month"];
@@ -81,6 +82,38 @@ const clock = new RegExp(
   "gi",
 );
 const halfDay = 12;
+const zoneNames: [zone: string, words: string, abbreviations: string][] = [
+  [
+    "Europe/Berlin",
+    "deutsch\\w*|german|germany|berlin|central european|mitteleuropäisch\\w*",
+    "MEZ|MESZ|CET|CEST",
+  ],
+  ["Europe/London", "british|uk|london", "GMT|BST"],
+  ["Europe/Paris", "french|france|paris", ""],
+  ["UTC", "utc", "UTC"],
+  ["America/New_York", "eastern|east coast|new york", "EST|EDT|ET"],
+  ["America/Chicago", "central|chicago", "CST|CDT|CT"],
+  ["America/Denver", "mountain|denver", "MST|MDT|MT"],
+  [
+    "America/Los_Angeles",
+    "pacific|west coast|california|san francisco|los angeles",
+    "PST|PDT|PT",
+  ],
+  ["Asia/Tokyo", "japan\\w*|tokyo", "JST"],
+  ["Asia/Kolkata", "india\\w*", ""],
+  ["Australia/Sydney", "sydney", ""],
+];
+const zones = zoneNames.map(([zone, words, abbreviations]) => ({
+  zone,
+  spoken: new RegExp(
+    `\\b(?:in\\s+|nach\\s+)?(?:${words})(?:\\s+(?:standard|daylight))?\\s+(?:time|zeit)\\b`,
+    "i",
+  ),
+  // Only capitals count, so words such as "est" or "mt" don't
+  abbreviated: abbreviations
+    ? new RegExp(`\\b(?:${abbreviations})\\b`)
+    : undefined,
+}));
 const eveningPlans =
   /\b(?:dinner|drinks|party|evening|tonight|concert|date night|abendessen|abends?)\b/i;
 
@@ -111,10 +144,18 @@ function corrected(said: When, fix: When): When {
 function parseOne(text: string, now: Date): When {
   let rest = text;
   const when: When = {};
-  const dotted = rest.match(/\b(\d{1,2})\.(\d{1,2})\.(?!\d)/);
+  const dotted = rest.match(/\b(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})?(?!\d)/);
   if (dotted) {
-    when.day = monthDay(now, Number(dotted[2]), Number(dotted[1]));
+    const [, date, month, year] = dotted;
+    when.day = year
+      ? new Date(fullYear(year), Number(month) - 1, Number(date))
+      : monthDay(now, Number(month), Number(date));
     rest = rest.replace(dotted[0], " ");
+  }
+  const zone = spokenZone(rest);
+  if (zone) {
+    when.zone = zone.zone;
+    rest = rest.replace(zone.text, " ");
   }
   rest = rest.replace(duration, (...match) => {
     when.minutes = durationMinutes(match);
@@ -147,6 +188,19 @@ function monthDay(now: Date, month: number, day: number) {
       ? new Date(now.getFullYear() + 1, month - 1, day)
       : date,
   );
+}
+
+function spokenZone(text: string) {
+  for (const { zone, spoken, abbreviated } of zones) {
+    const match =
+      text.match(spoken) ?? (abbreviated && text.match(abbreviated));
+    if (match) return { zone, text: match[0] };
+  }
+  return undefined;
+}
+
+function fullYear(year: string) {
+  return year.length === 2 ? 2000 + Number(year) : Number(year);
 }
 
 function clocks(text: string, evening: boolean): Pick<When, "start" | "end"> {
@@ -293,6 +347,44 @@ export function at(day: Date, time: Clock) {
   const date = new Date(day);
   date.setHours(time.hour, time.minute, 0, 0);
   return date;
+}
+
+/** The moment when clocks in `zone` show the wall time of `local`. */
+export function inZone(local: Date, zone?: string) {
+  if (!zone) return local;
+  const wall = Date.UTC(
+    local.getFullYear(),
+    local.getMonth(),
+    local.getDate(),
+    local.getHours(),
+    local.getMinutes(),
+  );
+  const guess = wall - zoneOffset(zone, wall);
+  return new Date(wall - zoneOffset(zone, guess));
+}
+
+function zoneOffset(zone: string, moment: number) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    })
+      .formatToParts(moment)
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  const shown = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+  );
+  return shown - Math.floor(moment / 60_000) * 60_000;
 }
 
 export function midnight(date: Date) {
