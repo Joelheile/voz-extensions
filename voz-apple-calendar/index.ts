@@ -1,13 +1,13 @@
 import { rm } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { defineExtension, type Context } from "voz";
+import { apiVersion, defineExtension, type Context } from "voz";
 import {
+  calendarRequest,
   confirmation,
   describe,
   edited,
-  instructions,
   plan,
-  schema,
+  request,
   undoing,
   type Plan,
   type Snapshot,
@@ -15,6 +15,8 @@ import {
 
 const script = fileURLToPath(new URL("./eventkit.js", import.meta.url));
 const days = 14;
+// Voz 0.2.0 and older only run commands whose phrase starts the dictation
+const anywhere = apiVersion >= 7;
 
 type Saved = { plan: Plan; id: string };
 
@@ -23,7 +25,9 @@ export default defineExtension((voz) => {
     triggers: {
       type: "string",
       title: "Trigger words",
-      description: "Start a dictation with one of these, separated by commas",
+      description: anywhere
+        ? "Say one of these anywhere in a dictation, separated by commas"
+        : "Start a dictation with one of these, separated by commas",
       default:
         "calendar, kalender, add to calendar, change calendar, move calendar",
     },
@@ -60,26 +64,29 @@ export default defineExtension((voz) => {
     .filter(Boolean)) {
     voz.registerCommand({
       phrase: trigger,
-      at: "start",
+      at: anywhere ? "anywhere" : "start",
       run: (event, ctx) =>
         reporting(ctx, async () => {
-          if (!event.text)
+          const dictation = anywhere ? event.text : `${trigger} ${event.text}`;
+          if (dictation.trim().toLowerCase() === trigger.toLowerCase())
             return ctx.notify(
-              "Say what to add or change after the trigger word",
+              "Say what to add or change with the trigger word",
             );
-          const dictation = `${trigger} ${event.text}`;
           const from = new Date();
           from.setHours(0, 0, 0, 0);
-          const [snapshot, request] = await Promise.all([
-            eventKit<Snapshot>("list", { from: from.getTime(), days }),
-            ctx.generate({
-              instructions,
-              prompt: `Dictation: ${dictation}`,
-              schema,
-            }),
-          ]);
+          const snapshot = await eventKit<Snapshot>("list", {
+            from: from.getTime(),
+            days,
+          });
+          const asked = await ctx.generate(request(dictation));
+          const { calendar } =
+            asked.action === "add" && snapshot.calendars.length > 1
+              ? await ctx.generate(
+                  calendarRequest(asked.title, snapshot.calendars),
+                )
+              : { calendar: "none" };
           const planned = plan(
-            request,
+            { ...asked, calendar },
             snapshot,
             new Date(),
             settings,

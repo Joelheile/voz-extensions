@@ -9,6 +9,8 @@ import {
   inZone,
   midnight,
   parseWhen,
+  wallTime,
+  zoneNames,
   type Clock,
   type When,
 } from "./times";
@@ -26,6 +28,8 @@ export type Request = {
   title: string;
   event: string;
   location: string;
+  /** The calendar label the model picked, or "none" */
+  calendar: string;
 };
 type Details = {
   title: string;
@@ -33,14 +37,15 @@ type Details = {
   start: number;
   end: number;
 };
-export type Plan =
+export type Plan = (
   | ({ action: "add"; calendar: string } & Details)
   | ({
       action: "update";
       id: string;
       occurrence: number;
       before: Details;
-    } & Details);
+    } & Details)
+) & { zone?: string };
 type Settings = WorkDay & { minutes: number; calendar: string };
 
 const minute = 60_000;
@@ -96,16 +101,39 @@ Example: "calendar rename the design review on Thursday to roadmap review"
 Example: "calendar move lunch with Tom to Café Luna"
 {"action":"change","title":"","event":"lunch with Tom","location":"Café Luna"}`;
 
-export const schema = {
-  type: "object",
-  properties: {
-    action: { type: "string", enum: ["add", "change"] },
-    title: { type: "string", description: "Short title, or the new name" },
-    event: { type: "string", description: "Words naming the existing event" },
-    location: { type: "string", description: "Place, or empty" },
-  },
-  required: ["action", "title", "event", "location"],
-} as const;
+export function request(dictation: string) {
+  return {
+    instructions,
+    prompt: `Dictation: ${dictation}`,
+    schema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["add", "change"] },
+        title: { type: "string", description: "Short title, or the new name" },
+        event: {
+          type: "string",
+          description: "Words naming the existing event",
+        },
+        location: { type: "string", description: "Place, or empty" },
+      },
+      required: ["action", "title", "event", "location"],
+    },
+  } as const;
+}
+
+// The small model picks better when this is the only question
+export function calendarRequest(title: string, calendars: CalendarInfo[]) {
+  const labels = [...calendarLabels(calendars).keys()];
+  return {
+    instructions: `You choose which of a person's calendars an event belongs in. Pick the calendar whose name fits the event best. Work meetings and calls go in a work calendar. Lectures and courses go in a university or school calendar. Family events and birthdays go in a family calendar. Doctors, friends, sports and errands go in a private or home calendar. Answer "none" when no name fits.`,
+    prompt: `Calendars: ${labels.join(", ")}\nEvent: ${title}`,
+    schema: {
+      type: "object",
+      properties: { calendar: { type: "string", enum: [...labels, "none"] } },
+      required: ["calendar"],
+    },
+  } as const;
+}
 
 export function plan(
   request: Request,
@@ -114,9 +142,10 @@ export function plan(
   settings: Settings,
   dictation: string,
 ): Plan {
-  const location = says(dictation, request.location)
-    ? request.location.trim()
-    : "";
+  const location =
+    says(dictation, request.location) && !parseWhen(request.location, now).zone
+      ? request.location.trim()
+      : "";
   const changing =
     changeLead.test(dictation) ||
     (request.action === "change" &&
@@ -141,9 +170,9 @@ function add(
   location: string,
 ): Plan {
   const calendars = calendarLabels(snapshot.calendars);
-  const label = [...calendars.keys()].find((label) => says(dictation, label));
+  const named = [...calendars.keys()].find((label) => says(dictation, label));
   const calendar =
-    (label && calendars.get(label)) ||
+    calendars.get(named ?? request.calendar) ||
     calendars.get(settings.calendar) ||
     snapshot.defaultCalendar;
   if (!calendar)
@@ -157,6 +186,7 @@ function add(
     title: request.title.trim() || "Busy",
     location,
     ...addedTimes(when, snapshot.events, now, settings),
+    ...(when.zone && { zone: when.zone }),
   };
 }
 
@@ -231,6 +261,7 @@ function change(
     occurrence: event.start,
     before,
     ...next,
+    ...(when.zone && { zone: when.zone }),
   };
 }
 
@@ -304,10 +335,12 @@ export function confirmation(
   plan: Plan,
   calendars: CalendarInfo[],
 ): AskOptions {
+  const shown = (moment: number) => wallTime(moment, plan.zone).getTime();
   const fields: AskField[] = [
     { id: "title", label: "Title", type: "text", value: plan.title },
-    { id: "start", label: "Starts", type: "date", value: plan.start },
-    { id: "end", label: "Ends", type: "date", value: plan.end },
+    { id: "start", label: "Starts", type: "date", value: shown(plan.start) },
+    { id: "end", label: "Ends", type: "date", value: shown(plan.end) },
+    ...(plan.zone ? [zoneField(plan.zone)] : []),
     { id: "location", label: "Location", type: "text", value: plan.location },
   ];
   if (plan.action === "update")
@@ -339,14 +372,42 @@ export function edited(
   values: NonNullable<Answer>["values"],
   calendars: CalendarInfo[],
 ): Plan {
+  const zone = values.zone
+    ? zoneLabels(plan.zone!).get(String(values.zone))
+    : undefined;
+  const moment = (shown: unknown) =>
+    inZone(new Date(Number(shown)), zone).getTime();
   const details = {
     title: String(values.title).trim() || plan.title,
     location: String(values.location).trim(),
-    ...checked(Number(values.start), Number(values.end)),
+    ...checked(moment(values.start), moment(values.end)),
   };
   if (plan.action === "update") return { ...plan, ...details };
   const calendar = calendarLabels(calendars).get(String(values.calendar));
   return { ...plan, ...details, calendar: calendar ?? plan.calendar };
+}
+
+// Starts and Ends show the wall time in this zone, so changing it moves the event
+function zoneField(zone: string): AskField {
+  const labels = [...zoneLabels(zone).keys()];
+  return {
+    id: "zone",
+    label: "Time zone",
+    type: "choice",
+    value: labels[0],
+    options: labels,
+  };
+}
+
+function zoneLabels(spoken: string) {
+  const here = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const zones = new Set([spoken, here, ...zoneNames.map(([zone]) => zone)]);
+  return new Map(
+    [...zones].map((zone) => [
+      zone.split("/").at(-1)!.replaceAll("_", " "),
+      zone,
+    ]),
+  );
 }
 
 export function undoing(plan: Plan, id: string) {

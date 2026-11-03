@@ -4,6 +4,7 @@ import {
   confirmation,
   describe,
   edited,
+  calendarRequest,
   plan,
   undoing,
   type CalendarEvent,
@@ -62,7 +63,14 @@ const add = (
   changed = settings,
 ) =>
   plan(
-    { action: "add", title, event: "", location: "", ...extra },
+    {
+      action: "add",
+      title,
+      event: "",
+      location: "",
+      calendar: "none",
+      ...extra,
+    },
     snapshot,
     now,
     changed,
@@ -74,7 +82,14 @@ const change = (
   extra: Partial<Request> = {},
 ) =>
   plan(
-    { action: "change", title: "", event: eventWords, location: "", ...extra },
+    {
+      action: "change",
+      title: "",
+      event: eventWords,
+      location: "",
+      calendar: "",
+      ...extra,
+    },
     snapshot,
     now,
     settings,
@@ -289,7 +304,13 @@ test("renames and relocates without touching the time", () => {
 test("treats a change verb as a change whatever the model picked", () => {
   expect(
     plan(
-      { action: "add", title: "Standup", event: "standup", location: "" },
+      {
+        action: "add",
+        title: "Standup",
+        event: "standup",
+        location: "",
+        calendar: "",
+      },
       snapshot,
       now,
       settings,
@@ -378,7 +399,13 @@ test("the next meeting is the next one to start, not the one running now", () =>
   const during = new Date(2026, 9, 26, 13, 30);
   expect(
     plan(
-      { action: "change", title: "", event: "my next meeting", location: "" },
+      {
+        action: "change",
+        title: "",
+        event: "my next meeting",
+        location: "",
+        calendar: "",
+      },
       snapshot,
       during,
       settings,
@@ -430,6 +457,7 @@ test("asks with the planned fields and adds what the user edited", () => {
       title: "Moritz Entlassung",
       event: "",
       location: "Fritzlage",
+      calendar: "",
     },
     snapshot,
     now,
@@ -444,14 +472,15 @@ test("asks with the planned fields and adds what the user edited", () => {
       id: "start",
       label: "Starts",
       type: "date",
-      value: Date.UTC(2026, 11, 5, 15),
+      value: new Date(2026, 11, 5, 16).getTime(),
     },
     {
       id: "end",
       label: "Ends",
       type: "date",
-      value: Date.UTC(2026, 11, 5, 16),
+      value: new Date(2026, 11, 5, 17).getTime(),
     },
+    expect.objectContaining({ id: "zone", value: "Berlin" }),
     { id: "location", label: "Location", type: "text", value: "Fritzlage" },
     {
       id: "calendar",
@@ -475,7 +504,11 @@ test("asks with the planned fields and adds what the user edited", () => {
     calendar: "work",
     location: "Fritzlar",
     title: "Moritz Entlassung",
+    start: Date.UTC(2026, 11, 5, 15),
   });
+  expect(
+    edited(planned, { ...values, zone: "London" }, snapshot.calendars).start,
+  ).toBe(Date.UTC(2026, 11, 5, 16));
   expect(() =>
     edited(planned, { ...values, end: values.start }, snapshot.calendars),
   ).toThrow("end before it starts");
@@ -483,7 +516,13 @@ test("asks with the planned fields and adds what the user edited", () => {
 
 test("asks to save a change without a calendar choice", () => {
   const planned = plan(
-    { action: "change", title: "", event: "standup", location: "" },
+    {
+      action: "change",
+      title: "",
+      event: "standup",
+      location: "",
+      calendar: "",
+    },
     snapshot,
     now,
     settings,
@@ -503,7 +542,7 @@ test("asks to save a change without a calendar choice", () => {
 test("adds events at the time in the zone they name", () => {
   const add = (dictation: string) =>
     plan(
-      { action: "add", title: "Call", event: "", location: "" },
+      { action: "add", title: "Call", event: "", location: "", calendar: "" },
       snapshot,
       now,
       settings,
@@ -517,4 +556,50 @@ test("adds events at the time in the zone they name", () => {
     start: Date.UTC(2026, 9, 27, 13),
     end: Date.UTC(2026, 9, 27, 14),
   });
+});
+
+test("shows no time zone row when none was spoken", () => {
+  const card = confirmation(
+    add("Call", "calendar call tomorrow at 9"),
+    snapshot.calendars,
+  );
+  expect(card.fields!.map((field) => field.id)).not.toContain("zone");
+  expect(card.fields![1].value).toBe(at(27, 9));
+});
+
+test("adds to the calendar the model picks unless one is named", () => {
+  expect(
+    add("Board meeting", "board meeting tomorrow at 9 in my calendar", {
+      calendar: "Arbeit",
+    }),
+  ).toMatchObject({ calendar: "work" });
+  expect(
+    add("Dentist", "calendar dentist tomorrow at 9 in Privat Google", {
+      calendar: "Arbeit",
+    }),
+  ).toMatchObject({ calendar: "home-2" });
+  expect(
+    add("Dentist", "calendar dentist tomorrow at 9", { calendar: "Gone" }),
+  ).toMatchObject({ calendar: "home-1" });
+});
+
+test("asks the model to pick from the calendars there are", () => {
+  const { prompt, schema } = calendarRequest("Lunch", snapshot.calendars);
+  expect(prompt).toBe(
+    "Calendars: Arbeit, Privat (iCloud), Privat (Google)\nEvent: Lunch",
+  );
+  expect(schema.properties.calendar.enum).toEqual([
+    "Arbeit",
+    "Privat (iCloud)",
+    "Privat (Google)",
+    "none",
+  ]);
+});
+
+test("does not take a time zone for a place", () => {
+  expect(
+    add("Call", "calendar call tomorrow at 9am New York time", {
+      location: "New York time",
+    }).location,
+  ).toBe("");
 });

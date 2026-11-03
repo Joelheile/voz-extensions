@@ -56,6 +56,9 @@ const amounts = new Map([
   ["zwei", 2],
   ["three", 3],
   ["drei", 3],
+  ["anderthalb", 1.5],
+  ["eineinhalb", 1.5],
+  ["zweieinhalb", 2.5],
   ["four", 4],
   ["five", 5],
   ["six", 6],
@@ -82,27 +85,28 @@ const clock = new RegExp(
   "gi",
 );
 const halfDay = 12;
-const zoneNames: [zone: string, words: string, abbreviations: string][] = [
+export const zoneNames: [zone: string, words: string, abbreviations: string][] =
   [
-    "Europe/Berlin",
-    "deutsch\\w*|german|germany|berlin|central european|mitteleuropäisch\\w*",
-    "MEZ|MESZ|CET|CEST",
-  ],
-  ["Europe/London", "british|uk|london", "GMT|BST"],
-  ["Europe/Paris", "french|france|paris", ""],
-  ["UTC", "utc", "UTC"],
-  ["America/New_York", "eastern|east coast|new york", "EST|EDT|ET"],
-  ["America/Chicago", "central|chicago", "CST|CDT|CT"],
-  ["America/Denver", "mountain|denver", "MST|MDT|MT"],
-  [
-    "America/Los_Angeles",
-    "pacific|west coast|california|san francisco|los angeles",
-    "PST|PDT|PT",
-  ],
-  ["Asia/Tokyo", "japan\\w*|tokyo", "JST"],
-  ["Asia/Kolkata", "india\\w*", ""],
-  ["Australia/Sydney", "sydney", ""],
-];
+    [
+      "Europe/Berlin",
+      "deutsch\\w*|german|germany|berlin|central european|mitteleuropäisch\\w*",
+      "MEZ|MESZ|CET|CEST",
+    ],
+    ["Europe/London", "british|uk|london", "GMT|BST"],
+    ["Europe/Paris", "french|france|paris", ""],
+    ["UTC", "utc", "UTC"],
+    ["America/New_York", "eastern|east coast|new york", "EST|EDT|ET"],
+    ["America/Chicago", "central|chicago", "CST|CDT|CT"],
+    ["America/Denver", "mountain|denver", "MST|MDT|MT"],
+    [
+      "America/Los_Angeles",
+      "pacific|west coast|california|san francisco|los angeles",
+      "PST|PDT|PT",
+    ],
+    ["Asia/Tokyo", "japan\\w*|tokyo", "JST"],
+    ["Asia/Kolkata", "india\\w*", ""],
+    ["Australia/Sydney", "sydney", ""],
+  ];
 const zones = zoneNames.map(([zone, words, abbreviations]) => ({
   zone,
   spoken: new RegExp(
@@ -114,6 +118,14 @@ const zones = zoneNames.map(([zone, words, abbreviations]) => ({
     ? new RegExp(`\\b(?:${abbreviations})\\b`)
     : undefined,
 }));
+// Any other city in the time zone database, such as "Singapore time" or "São Paulo Zeit"
+const cities = new Map(
+  Intl.supportedValuesOf("timeZone").map((zone) => [
+    plain(zone.split("/").at(-1)!.replaceAll("_", " ")),
+    zone,
+  ]),
+);
+const cityTime = /\b(?:in\s+|nach\s+)?([\p{L} ]+?)\s+(?:time|zeit)\b/giu;
 const eveningPlans =
   /\b(?:dinner|drinks|party|evening|tonight|concert|date night|abendessen|abends?)\b/i;
 
@@ -196,7 +208,20 @@ function spokenZone(text: string) {
       text.match(spoken) ?? (abbreviated && text.match(abbreviated));
     if (match) return { zone, text: match[0] };
   }
+  for (const match of text.matchAll(cityTime)) {
+    const words = match[1].split(" ");
+    // The city is the last words before "time", such as "at 9am Hong Kong time"
+    for (let first = 0; first < words.length; first++) {
+      const zone = cities.get(plain(words.slice(first).join(" ")));
+      if (zone)
+        return { zone, text: match[0].slice(match[0].indexOf(words[first])) };
+    }
+  }
   return undefined;
+}
+
+function plain(text: string) {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
 
 function fullYear(year: string) {
@@ -361,6 +386,19 @@ export function inZone(local: Date, zone?: string) {
   );
   const guess = wall - zoneOffset(zone, wall);
   return new Date(wall - zoneOffset(zone, guess));
+}
+
+/** The local time that shows the wall time `zone` has at `moment`, the inverse of `inZone`. */
+export function wallTime(moment: number, zone?: string) {
+  if (!zone) return new Date(moment);
+  const wall = new Date(moment + zoneOffset(zone, moment));
+  return new Date(
+    wall.getUTCFullYear(),
+    wall.getUTCMonth(),
+    wall.getUTCDate(),
+    wall.getUTCHours(),
+    wall.getUTCMinutes(),
+  );
 }
 
 function zoneOffset(zone: string, moment: number) {
