@@ -6,6 +6,7 @@ import {
   confirmation,
   describe,
   edited,
+  namedCalendar,
   plan,
   request,
   undoing,
@@ -65,51 +66,58 @@ export default defineExtension((voz) => {
     voz.registerCommand({
       phrase: trigger,
       at: anywhere ? "anywhere" : "start",
-      run: (event, ctx) =>
-        reporting(ctx, async () => {
-          const dictation = anywhere ? event.text : `${trigger} ${event.text}`;
-          if (dictation.trim().toLowerCase() === trigger.toLowerCase())
-            return ctx.notify(
-              "Say what to add or change with the trigger word",
-            );
-          const from = new Date();
-          from.setHours(0, 0, 0, 0);
-          const snapshot = await eventKit<Snapshot>("list", {
-            from: from.getTime(),
-            days,
-          });
-          const asked = await ctx.generate(request(dictation));
-          const { calendar } =
-            asked.action === "add" && snapshot.calendars.length > 1
-              ? await ctx.generate(
-                  calendarRequest(asked.title, snapshot.calendars),
-                )
-              : { calendar: "none" };
-          const planned = plan(
-            { ...asked, calendar },
-            snapshot,
-            new Date(),
-            settings,
-            dictation,
-          );
-          let next = planned;
-          // Voz 0.2.0 and older have no ctx.ask, so they add without the card
-          if (ctx.ask) {
-            const answer = await ctx.ask(
-              confirmation(planned, snapshot.calendars),
-            );
-            if (!answer) return;
-            if (answer.button === "Copy") return copy(ctx, sentence(dictation));
-            next = edited(planned, answer.values, snapshot.calendars);
-          }
-          const { id } = await eventKit<{ id: string }>(next.action, next);
-          await Bun.write(
-            lastChange,
-            JSON.stringify({ plan: next, id } satisfies Saved),
-          );
-          ctx.notify(describe(next));
-        }),
+      run: async (event, ctx) => {
+        const dictation = sentence(
+          anywhere ? event.text : `${trigger} ${event.text}`,
+        );
+        try {
+          await schedule(ctx, dictation);
+        } catch (error) {
+          // A command takes the dictation, so keep it when the request fails
+          await clipboard(dictation);
+          ctx.notify(`${message(error)}. What you said is on the clipboard`);
+        }
+      },
     });
+  }
+
+  async function schedule(ctx: Context, dictation: string) {
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const [snapshot, asked] = await Promise.all([
+      eventKit<Snapshot>("list", { from: from.getTime(), days }),
+      ctx.generate(request(dictation)),
+    ]);
+    if (asked.action === "none") return ctx.insert(dictation);
+    const { calendar } =
+      asked.action === "add" &&
+      snapshot.calendars.length > 1 &&
+      !namedCalendar(dictation, snapshot.calendars)
+        ? await ctx.generate(calendarRequest(asked.title, snapshot.calendars))
+        : { calendar: "none" };
+    let next = plan(
+      { ...asked, calendar },
+      snapshot,
+      new Date(),
+      settings,
+      dictation,
+    );
+    // Voz 0.2.0 and older have no ctx.ask, so they save without the card
+    if (ctx.ask) {
+      const answer = await ctx.ask(confirmation(next, snapshot.calendars));
+      if (!answer) return;
+      if (answer.button === "Copy") {
+        await clipboard(dictation);
+        return ctx.insert(dictation);
+      }
+      next = edited(next, answer.values, snapshot.calendars);
+    }
+    const { id } = await eventKit<{ id: string }>(next.action, next);
+    await Bun.write(
+      lastChange,
+      JSON.stringify({ plan: next, id } satisfies Saved),
+    );
+    ctx.notify(describe(next));
   }
 
   voz.registerCommand({
@@ -129,11 +137,9 @@ export default defineExtension((voz) => {
   });
 });
 
-async function copy(ctx: Context, text: string) {
-  const clipboard = Bun.spawn(["pbcopy"], { stdin: new Blob([text]) });
-  if ((await clipboard.exited) !== 0)
-    throw new Error("Could not copy the text");
-  ctx.insert(text);
+async function clipboard(text: string) {
+  const copy = Bun.spawn(["pbcopy"], { stdin: new Blob([text]) });
+  if ((await copy.exited) !== 0) throw new Error("Could not copy the text");
 }
 
 function sentence(text: string) {
@@ -144,8 +150,12 @@ async function reporting(ctx: Context, work: () => Promise<void>) {
   try {
     await work();
   } catch (error) {
-    ctx.notify(error instanceof Error ? error.message : String(error));
+    ctx.notify(message(error));
   }
+}
+
+function message(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 async function eventKit<Result>(

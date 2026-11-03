@@ -39,7 +39,7 @@ A bare hour means a work hour: "at 4" is 4 PM and "at 9" is 9 AM. Dinner, drinks
 
 ## Check it before it saves
 
-A card under the notch shows the title, times, location and calendar. Edit any of them, then press Add, or press Copy to type and copy what you said instead. When you name a time zone, the card shows the times in that zone and lets you switch it. The card stays until you answer. Voz 0.2.0 and older have no card and save right away.
+A card under the notch shows the title, times, location and calendar. Edit any of them, then press Add, or press Copy to type and copy what you said instead. When you name a time zone, the card shows the times in that zone and lets you switch it. The card stays until you answer. When you only mention your calendar, as in "I'll check my calendar", Voz types what you said as usual. If a request fails, what you said goes to the clipboard. Voz 0.2.0 and older have no card and save right away.
 
 ## Change an event
 

@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test";
 import {
   calendarLabels,
+  calendarRequest,
   confirmation,
   describe,
   edited,
-  calendarRequest,
+  namedCalendar,
   plan,
   undoing,
   type CalendarEvent,
@@ -600,6 +601,47 @@ test("does not take a time zone for a place", () => {
   expect(
     add("Call", "calendar call tomorrow at 9am New York time", {
       location: "New York time",
+    }).location,
+  ).toBe("");
+});
+
+test("does not take the trigger word for a calendar or a place", () => {
+  const calendars = [
+    ...snapshot.calendars,
+    { id: "plain", title: "Kalender", account: "iCloud" },
+  ];
+  expect(namedCalendar("Kalender Mama Geburtstag um 18 Uhr", calendars)).toBe(
+    undefined,
+  );
+  expect(namedCalendar("Kalender Zahnarzt um 8 in Arbeit", calendars)).toBe(
+    "work",
+  );
+  expect(
+    add("Lunch with Tom", "Put lunch with Tom in my calendar tomorrow", {
+      location: "my calendar",
+    }).location,
+  ).toBe("");
+  expect(
+    add(
+      "Lunch with Tom",
+      "Put lunch with Tom in my calendar tomorrow at noon",
+      {
+        location: "tomorrow at noon",
+      },
+    ),
+  ).toMatchObject({ location: "", start: at(27, 12) });
+  expect(
+    add(
+      "Team retro",
+      "Add the team retro Thursday at 4 to my Arbeit calendar",
+      {
+        location: "Arbeit",
+      },
+    ),
+  ).toMatchObject({ location: "", calendar: "work" });
+  expect(
+    add("Mama Geburtstag", "Kalender Mama Geburtstag am 12.3. um 18 Uhr", {
+      location: "Mama Geburtstag",
     }).location,
   ).toBe("");
 });

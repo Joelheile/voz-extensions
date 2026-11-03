@@ -24,7 +24,7 @@ export type Snapshot = {
   events: CalendarEvent[];
 };
 export type Request = {
-  action: "add" | "change";
+  action: "add" | "change" | "none";
   title: string;
   event: string;
   location: string;
@@ -62,11 +62,12 @@ const extendWords = /\b(?:extend|longer|lengthen|verlänger\w*)\b/i;
 const shortenWords = /\b(?:shorten|shorter|cut|kürz\w*)\b/i;
 const earlierWords =
   /\b(?:earlier|pull|forward|früher|vorzieh\w*|vorverleg\w*)\b/i;
+const calendarWord = /\b(?:calendars?|kalender)\b/i;
 const shiftWords =
   /\b(?:by|later|earlier|push|pull|delay|postpone|back|forward|später|früher|um)\b/i;
 
 export const instructions = `You read a dictated calendar request and fill in fields. Speech recognition wrote the dictation, so it can have misheard words, fillers and repeats.
-- action: "add" for a new event or time block. "change" to move, resize, rename or relocate an event that already exists, such as "move", "push", "change", "extend" or "rename".
+- action: "add" when they ask to put a new event or time block into their calendar. "change" when they ask to move, resize, rename or relocate an event already in it, such as "move", "push", "change", "extend" or "rename". "none" when they only talk about a calendar without asking to put or change anything in it: their calendar is full, they will check it, they ask someone else for an invite, or they talk about a calendar app.
 - title: for add, the title a person would type into their calendar, in the dictation's language. Include who and what, such as "Lunch with Tom" or "Call with Sarah about the pitch deck". Fix misheard words from context, such as "fyg" for "für", and drop fillers and repeats. Leave out the date, time, time zone, place, and words about the calendar itself, such as "calendar", "Kalender", "add" or "mit Location". For change, the new name only if they rename it, else "".
 - event: for change, the words that name the existing event, copied from the dictation, without the new time. For add, "".
 - location: the place they name, such as a café, room, town or address, copied from the dictation. A time zone such as "New York time" or "deutsche Zeit" is not a place. Else "".
@@ -98,6 +99,12 @@ Example: "calendar make my next meeting 30 minutes"
 Example: "calendar rename the design review on Thursday to roadmap review"
 {"action":"change","title":"Roadmap review","event":"the design review on Thursday","location":""}
 
+Example: "I'll check my calendar and let you know"
+{"action":"none","title":"","event":"","location":""}
+
+Example: "Mein Kalender ist morgen voll, lass uns Freitag reden"
+{"action":"none","title":"","event":"","location":""}
+
 Example: "calendar move lunch with Tom to Café Luna"
 {"action":"change","title":"","event":"lunch with Tom","location":"Café Luna"}`;
 
@@ -108,7 +115,7 @@ export function request(dictation: string) {
     schema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["add", "change"] },
+        action: { type: "string", enum: ["add", "change", "none"] },
         title: { type: "string", description: "Short title, or the new name" },
         event: {
           type: "string",
@@ -142,10 +149,16 @@ export function plan(
   settings: Settings,
   dictation: string,
 ): Plan {
-  const location =
-    says(dictation, request.location) && !parseWhen(request.location, now).zone
-      ? request.location.trim()
-      : "";
+  const place = request.location.trim();
+  const location = isPlace(
+    place,
+    request.title,
+    dictation,
+    snapshot.calendars,
+    now,
+  )
+    ? place
+    : "";
   const changing =
     changeLead.test(dictation) ||
     (request.action === "change" &&
@@ -161,6 +174,23 @@ export function plan(
   return add(request, snapshot, now, settings, dictation, location);
 }
 
+// The model sometimes hands back the title, a time, a time zone or a calendar as the place
+function isPlace(
+  place: string,
+  title: string,
+  dictation: string,
+  calendars: CalendarInfo[],
+  now: Date,
+) {
+  return (
+    says(dictation, place) &&
+    place.toLowerCase() !== title.trim().toLowerCase() &&
+    Object.keys(parseWhen(place, now)).length === 0 &&
+    !calendarWord.test(place) &&
+    !namedCalendar(place, calendars)
+  );
+}
+
 function add(
   request: Request,
   snapshot: Snapshot,
@@ -169,11 +199,11 @@ function add(
   dictation: string,
   location: string,
 ): Plan {
-  const calendars = calendarLabels(snapshot.calendars);
-  const named = [...calendars.keys()].find((label) => says(dictation, label));
+  const labels = calendarLabels(snapshot.calendars);
   const calendar =
-    calendars.get(named ?? request.calendar) ||
-    calendars.get(settings.calendar) ||
+    namedCalendar(dictation, snapshot.calendars) ||
+    labels.get(request.calendar) ||
+    labels.get(settings.calendar) ||
     snapshot.defaultCalendar;
   if (!calendar)
     throw new CalendarError(
@@ -308,6 +338,14 @@ export function calendarLabels(calendars: CalendarInfo[]) {
       calendar.id,
     ]),
   );
+}
+
+/** The calendar they name, not counting the word "calendar" that triggers the extension */
+export function namedCalendar(dictation: string, calendars: CalendarInfo[]) {
+  const labels = calendarLabels(calendars);
+  const spoken = dictation.split(calendarWord).join(" ");
+  const label = [...labels.keys()].find((label) => says(spoken, label));
+  return label && labels.get(label);
 }
 
 export function describe(plan: Plan) {
