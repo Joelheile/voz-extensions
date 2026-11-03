@@ -109,3 +109,64 @@ test("reads a bare hour as evening when the plan is an evening one", () => {
     minute: 0,
   });
 });
+
+test("reads German dates with a year", () => {
+  expect(parseWhen("Am 5.12.2026 ab 16 Uhr deutsche Zeit", monday)).toEqual({
+    day: new Date(2026, 11, 5),
+    start: { hour: 16, minute: 0 },
+    zone: "Europe/Berlin",
+  });
+  expect(parseWhen("am 3.1.27 um 9 Uhr", monday)).toEqual({
+    day: new Date(2027, 0, 3),
+    start: { hour: 9, minute: 0 },
+  });
+  expect(parseWhen("am 5.12. ab 16 Uhr", monday).day).toEqual(
+    new Date(2026, 11, 5),
+  );
+});
+
+test("reads spoken time zones", () => {
+  expect(parseWhen("ab 16 Uhr deutsche Zeit", monday)).toEqual({
+    start: { hour: 16, minute: 0 },
+    zone: "Europe/Berlin",
+  });
+  expect(parseWhen("at 9am New York time", monday).zone).toBe(
+    "America/New_York",
+  );
+  expect(parseWhen("at 3 PST", monday).zone).toBe("America/Los_Angeles");
+  expect(parseWhen("um 10 Uhr MEZ", monday).zone).toBe("Europe/Berlin");
+  expect(parseWhen("was ist das um 10", monday).zone).toBeUndefined();
+});
+
+test("reads German lengths and end times", () => {
+  expect(parseWhen("morgen um 10 für zwei Stunden", monday)).toEqual({
+    day: day(27),
+    start: { hour: 10, minute: 0 },
+    minutes: 120,
+  });
+  expect(parseWhen("um 9 Uhr eine Stunde lang", monday)).toEqual({
+    start: { hour: 9, minute: 0 },
+    minutes: 60,
+  });
+  expect(parseWhen("ab 16 Uhr bis 18 Uhr", monday)).toEqual({
+    start: { hour: 16, minute: 0 },
+    end: { hour: 18, minute: 0 },
+  });
+  expect(parseWhen("von 10 bis 12", monday)).toEqual({
+    start: { hour: 10, minute: 0 },
+    end: { hour: 12, minute: 0 },
+  });
+  expect(parseWhen("für 45 Minuten", monday)).toEqual({ minutes: 45 });
+  expect(parseWhen("anderthalb Stunden", monday)).toEqual({ minutes: 90 });
+});
+
+test("reads any city in the time zone database", () => {
+  expect(parseWhen("at 9am Singapore time", monday)).toEqual({
+    start: { hour: 9, minute: 0 },
+    zone: "Asia/Singapore",
+  });
+  expect(parseWhen("um 10 Uhr São Paulo Zeit", monday).zone).toBe(
+    "America/Sao_Paulo",
+  );
+  expect(parseWhen("lunch time at 12", monday).zone).toBeUndefined();
+});

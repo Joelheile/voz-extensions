@@ -1,11 +1,13 @@
 # voz-apple-calendar
 
-Plan your day without opening Calendar. Say "calendar" at the start of a dictation to add an event to Apple Calendar, find free time for it, or move, resize, rename or relocate an event you already have.
+Plan your day without opening Calendar. Say "calendar" or "Kalender" anywhere in a dictation to add an event to Apple Calendar, find free time for it, or move, resize, rename or relocate an event you already have.
 
 ```
 calendar deep work tomorrow at 9 for 2 hours
 calendar find an hour this afternoon to review the pitch deck
 calendar dinner with Lisa Saturday at 7 at Nobu
+put lunch with Tom in my calendar tomorrow at noon
+Kalender Moritz Entlassung am 5.12.2026 ab 16 Uhr deutsche Zeit
 calendar move my 3pm to Thursday
 calendar push standup by 15 minutes
 calendar extend the design review by 30 minutes
@@ -23,16 +25,21 @@ You need a Mac with Apple Intelligence. The first time it runs, macOS asks wheth
 
 ## Add an event
 
-| Say                 | Example                                      | What happens                                   |
-| ------------------- | -------------------------------------------- | ---------------------------------------------- |
-| A title and a time  | "dentist Wednesday at 8:30"                  | Adds it for your default length                |
-| A length or a range | "for 45 minutes", "from 3 to 4:30"           | Sets the end                                   |
-| No time             | "report tomorrow", "1 hour prep next week"   | Finds the first free gap in your workday       |
-| A part of the day   | "tomorrow morning", "Friday afternoon"       | Looks for free time only then                  |
-| A place             | "lunch with Tom Friday at noon at Café Nero" | Sets the location                              |
-| A calendar          | "in Work"                                    | Adds it there instead of your default calendar |
+| Say                 | Example                                      | What happens                                                                           |
+| ------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------- |
+| A title and a time  | "dentist Wednesday at 8:30"                  | Adds it for your default length                                                        |
+| A length or a range | "for 45 minutes", "from 3 to 4:30"           | Sets the end                                                                           |
+| No time             | "report tomorrow", "1 hour prep next week"   | Finds the first free gap in your workday                                               |
+| A part of the day   | "tomorrow morning", "Friday afternoon"       | Looks for free time only then                                                          |
+| A place             | "lunch with Tom Friday at noon at Café Nero" | Sets the location                                                                      |
+| A time zone         | "9am New York time", "16 Uhr deutsche Zeit"  | Converts it to your Mac's time zone                                                    |
+| A calendar          | "in Work"                                    | Adds it there. Otherwise the model picks the calendar whose name fits, or your default |
 
 A bare hour means a work hour: "at 4" is 4 PM and "at 9" is 9 AM. Dinner, drinks and other evening plans move it to the evening, so "dinner at 7" is 7 PM. If the time has passed today, it goes on tomorrow.
+
+## Check it before it saves
+
+A card under the notch shows the title, times, location and calendar. Edit any of them, then press Add, or press Copy to type and copy what you said instead. When you name a time zone, the card shows the times in that zone and lets you switch it. The card stays until you answer. When you only mention your calendar, as in "I'll check my calendar", Voz types what you said as usual. If a request fails, what you said goes to the clipboard. Voz 0.2.0 and older have no card and save right away.
 
 ## Change an event
 
@@ -65,13 +72,13 @@ Nothing leaves your Mac. The extension never sends invites.
 
 ## Settings
 
-| Setting                   | Default                                                     | What it does                                             |
-| ------------------------- | ----------------------------------------------------------- | -------------------------------------------------------- |
-| Trigger words             | `calendar, add to calendar, change calendar, move calendar` | Words that start a calendar request, separated by commas |
-| Default calendar          | Calendar's default                                          | Where new events go when you don't name a calendar       |
-| Default length in minutes | `60`                                                        | How long a new event is when you don't say               |
-| Workday starts at         | `9`                                                         | The earliest hour it looks for free time                 |
-| Workday ends at           | `18`                                                        | The latest hour it looks for free time                   |
+| Setting                   | Default                                                               | What it does                                                                                              |
+| ------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Trigger words             | `calendar, kalender, add to calendar, change calendar, move calendar` | Words that start a calendar request, separated by commas. Voz 0.2.0 and older only find them at the start |
+| Default calendar          | Calendar's default                                                    | Where new events go when you don't name a calendar                                                        |
+| Default length in minutes | `60`                                                                  | How long a new event is when you don't say                                                                |
+| Workday starts at         | `9`                                                                   | The earliest hour it looks for free time                                                                  |
+| Workday ends at           | `18`                                                                  | The latest hour it looks for free time                                                                    |
 
 ## Limits
 
